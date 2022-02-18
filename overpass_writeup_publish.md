@@ -1,7 +1,7 @@
 ## Overpass
 
 # Scanning 
-Ran an nmap aggressive scan on the box: 
+Ran an nmap aggressive scan on the box using ```nmap -A [Remote IP]```.
 ```
 PORT   STATE SERVICE VERSION
 22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
@@ -17,7 +17,7 @@ Service detection performed. Please report any incorrect results at https://nmap
 Nmap done: 1 IP address (1 host up) scanned in 18.61 seconds
 ```
 
-Just to cover all my bases, I also ran a full port scan on the box to see if there were any random open ports: 
+Just to cover all my bases, I also ran a full port scan on the box to see if there were any random open ports using ```nmap -p- [Remote IP]```.
 ```
 PORT   STATE SERVICE
 22/tcp open  ssh
@@ -26,11 +26,11 @@ PORT   STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 47.09 seconds
 ```
 
-So, it appears that we are only working with ssh and http. 
+So, it appears that we are only working with ssh and http for services.
 
 # Enumeration
 
-Let's use Nikto and gobuster to enumerate the website. I like using Nikto with the ``-h`` option and gobuster with the directory-list-1.0.txt file produced by SecLists (https://github.com/danielmiessler/SecLists). Depending on your computing capability, it may take a while to complete directory enumeration 
+Let's use Nikto and gobuster to enumerate the website. I like using Nikto with the ``-h`` option and gobuster with the ```directory-list-1.0.txt``` file produced by SecLists (https://github.com/danielmiessler/SecLists). Depending on your computing capability, it may take a while to complete directory enumeration 
 
 The output of Nikto shows interesting locations like /admin, /downloads, and /img.
 ```
@@ -68,7 +68,7 @@ Gobuster produced some of the same information.
 
 # Initial Access 
 
-The /admin page asks for a username and password. Using the Network section in Developer Tools, you can see that when the login button is pressed a login.js script runs. Looking at the login.js: 
+The /admin page asks for a username and password. Using the Network section in Developer Tools on the browser, I can see that when the login button is pressed a login.js script runs. I took a look at the login.js file. 
 ```
 async function postData(url = '', data = {}) {
     // Default options are marked with *
@@ -119,7 +119,7 @@ The most important section is the ```login()``` function, specifically the ```Co
 Cookies.set("SessionToken","")
 
 ```
-After setting the Cookie, simply reload the /admin page and you will authenticate and login. 
+After setting the Cookie, I simply reload the /admin page and I will authenticate and login. 
 
 # Exploitation 
 
