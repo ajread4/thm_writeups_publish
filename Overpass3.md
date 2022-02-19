@@ -1,4 +1,4 @@
-## Overpass3 (TryHackMe)
+## Overpass3
 
 Room link: https://tryhackme.com/room/overpass3hosting
 
