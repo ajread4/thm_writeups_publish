@@ -84,7 +84,7 @@ Also, please take care of the image file ;)
 So, I can infer that there are two users named ```john``` and ```drac```. User ```john``` must have a simple password. Before looking back at the random open high port, I ran hydra against the FTP and SSH service with username ```john``` and a simple password list. I was unsuccessful so I knew the credentials must be used somewhere else on the system. 
 
 # Initial Access
-I checked out the random high port and found that it was a Codiad IDEA. I navigated to the Codiad service running on port 62337 and logged in with credentials ```john:[REDACTED]```. I found a RCE on exploitdb: ```https://www.exploit-db.com/exploits/49705``` that requires authentication. The RCE appears to be able to write to Codiad within ```components/filemanager/controller.php``` and execute system commands like ```nc``` or ```/bin/bash``` that can be used to call back to a remote machine.
+I checked out the random high port and found that it was a Codiad IDE interface running on port 62337. I tried to login with a default password for user ```john``` and authenticated! I found a Codiad RCE on exploitdb: ```https://www.exploit-db.com/exploits/49705``` that requires authentication. The RCE appears to be able to write to Codiad within ```components/filemanager/controller.php``` and execute system commands like ```nc``` or ```/bin/bash``` that can be used to call back to a remote machine.
 
 Before running the exploit, it required me to set up a VPS for the connection. So, in one terminal, I set up reverse shell in bash that would pipe to another listener on my machine from the remote connection. 
 ```
