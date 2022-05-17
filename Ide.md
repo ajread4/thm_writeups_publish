@@ -2,7 +2,7 @@
 
 Room link: https://tryhackme.com/room/ide
 
-# Scanning 
+## Scanning 
 I ran an aggressive nmap scan to begin. It looked like there are 3 services running on the system, FTP, SSH, and HTTP. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A [Remote IP]
@@ -55,7 +55,7 @@ PORT      STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 239.50 seconds
 ```
 
-# Enumeration 
+## Enumeration 
 I first looked into the anonymous ftp login. There was a file called ```-``` nested within a the ```...``` directory. 
 ```
 ftp> ls -la
@@ -83,7 +83,7 @@ Also, please take care of the image file ;)
 ```
 So, I can infer that there are two users named ```john``` and ```drac```. User ```john``` must have a simple password. Before looking back at the random open high port, I ran hydra against the FTP and SSH service with username ```john``` and a simple password list. I was unsuccessful so I knew the credentials must be used somewhere else on the system. 
 
-# Initial Access
+## Initial Access
 I checked out the random high port and found that it was a Codiad IDE interface running on port 62337. I tried to login with a default password for user ```john``` and authenticated! I found a Codiad RCE on exploitdb: ```https://www.exploit-db.com/exploits/49705``` that requires authentication. The RCE appears to be able to write to Codiad within ```components/filemanager/controller.php``` and execute system commands like ```nc``` or ```/bin/bash``` that can be used to call back to a remote machine.
 
 Before running the exploit, it required me to set up a VPS for the connection. So, in one terminal, I set up reverse shell in bash that would pipe to another listener on my machine from the remote connection. 
@@ -128,7 +128,7 @@ uid=1000(drac) gid=1000(drac) groups=1000(drac),24(cdrom),27(sudo),30(dip),46(pl
 drac@ide:~$ wc -c user.txt
 33 user.txt
 ```
-# Privilege Escalation 
+## Privilege Escalation 
 Using  ```sudo -l``` it looked like I could restart vsftpd as root. 
 ```
 drac@ide:~$ sudo -l

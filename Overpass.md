@@ -2,7 +2,7 @@
 
 Room link: https://tryhackme.com/room/overpass
 
-# Scanning 
+## Scanning 
 I ran an nmap aggressive scan on the box using ```nmap -A [Remote IP]```.
 ```
 PORT   STATE SERVICE VERSION
@@ -18,7 +18,6 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 18.61 seconds
 ```
-
 Just to cover all my bases, I also ran a full port scan on the box to see if there were any random open ports using ```nmap -p- [Remote IP]```.
 ```
 PORT   STATE SERVICE
@@ -27,11 +26,8 @@ PORT   STATE SERVICE
 
 Nmap done: 1 IP address (1 host up) scanned in 47.09 seconds
 ```
-
 So, it appears that we are only working with ssh and http for services.
-
-# Enumeration
-
+## Enumeration
 Let's use Nikto and gobuster to enumerate the website. I like using Nikto with the ``-h`` option and gobuster with the ```directory-list-1.0.txt``` file produced by SecLists (https://github.com/danielmiessler/SecLists). Depending on your computing capability, it may take a while to complete directory enumeration 
 
 The output of Nikto shows interesting locations like /admin, /downloads, and /img.
@@ -52,7 +48,6 @@ The output of Nikto shows interesting locations like /admin, /downloads, and /im
 + 1 host(s) tested
 
 ```
-
 Gobuster produced some of the same information. 
 ```
 =====================================================
@@ -67,9 +62,7 @@ Gobuster produced some of the same information.
 2022/02/17 19:09:32 Finished
 =====================================================
 ```
-
-# Initial Access 
-
+## Initial Access 
 The /admin page asks for a username and password. Using the Network section in Developer Tools on the browser, I can see that when the login button is pressed a login.js script runs. I took a look at the login.js file. 
 ```
 async function postData(url = '', data = {}) {
@@ -121,9 +114,7 @@ The most important section is the ```login()``` function, specifically the ```Co
 Cookies.set("SessionToken","")
 ```
 After setting the Cookie, I simply reload the /admin page and I will authenticate and login. 
-
-# Exploitation 
-
+## Exploitation 
 After authenticating, I am presented with an RSA private key on the /admin page: 
 ```
 -----BEGIN RSA PRIVATE KEY-----
@@ -188,9 +179,7 @@ With the passphrase, I am able to login as user james and find flag at user.txt.
 james@overpass-prod:~$ id
 uid=1001(james) gid=1001(james) groups=1001(james)
 ```
-
-# Privilege Escalation 
-
+## Privilege Escalation 
 After logging in as james, there is a txt file with a possible hint for privilege escalation: 
 ```
 To Do:

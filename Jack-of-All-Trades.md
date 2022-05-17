@@ -2,7 +2,7 @@
 
 Room link: https://tryhackme.com/room/jackofalltrades
 
-# Scanning
+## Scanning
 Like I always do, I started with an aggressive NMAP scan using ```-A```.  
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A [Remote IP]
@@ -26,8 +26,7 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 43.81 seconds
 ```
-
-# Enumeration 
+## Enumeration 
 It appeared the only services running were SSH and HTTP, but they had switched ports! When I tried to navigate to the http service hosted on port 22, Firefox gave me an error: ```This address is restricted```. Doing some outside research, it appeared that Firefox did not allow network connections on restricted ports like 22. Within Firefox's settings there was a ```network.security.ports.banned.override``` preference which can be changed to allow connections on restricted ports like 22. According to Mozilla's documentation,```"Ports are used when any program accesses the Internet so that the system can keep separate applications' data separate. Some port numbers are reserved for functions such as e-mail or FTP. To prevent potential security risks if a protocol was allowed access a port reserved for a seperate protocol, Gecko applications contain a list of banned ports. This preference allows you to unban a port banned by default and therefore prevent the "Access to the port number given has been disabled for security reasons." or "This address uses a network port which is normally used for purposes other than Web browsing. Firefox has canceled the request for your protection." messages. "``` I used this site to change the preference: https://www.specialagentsqueaky.com/blog-post/r5iwj96j/2012-02-20-how-to-remove-firefoxs-this-address-is-restricted/. 
 
 Now with the ability to connect to the site, there was a base64 string within the html that hinted at some credentials to be used at ```/recovery.php```. 
@@ -88,7 +87,7 @@ Gobuster v2.0.1              OJ Reeves (@TheColonial)
 2022/02/21 15:34:27 Finished
 =====================================================
 ```
-# Initial Access
+## Initial Access
 I accessed the ```/recovery.php``` directory and found a basic login screen. I tried the user:password credentials that were found in the homepage. But, I was not able to authenticate. When I curl'd the ```/recovery.php``` page, it provided an interesting encoded string. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ curl http://10.10.141.123:22/recovery.php
@@ -168,7 +167,7 @@ user.jpg                                          100%  286KB 614.4KB/s   00:00 
 ```
 The jpg was a recipe for Penguin Soup with one of the ingredients being the user flag! 
 
-# Privilege Escalation 
+## Privilege Escalation 
 I checked to see if jack could run any commands as sudo.
 ```
 jack@jack-of-all-trades:~$ sudo -l
