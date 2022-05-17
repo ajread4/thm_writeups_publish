@@ -31,7 +31,7 @@ PORT   STATE  SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 0.25 seconds
 ```
 ## Enumerating
-I knew that I needed to use dig commands based on the challenge prompt. There are a variety of DNS record types. I figured the best one to try out first was TXT, since I have seen TXT on CTFs before. I also needed to make sure I pointed at the right DNS server using the ```@``` option in ```dig```.
+I knew that I needed to use ```dig``` based on the challenge prompt. There are a variety of DNS record types. I figured the best one to try out first was TXT, since I have seen TXT on CTFs before. I also needed to make sure I pointed at the right DNS server using the ```@``` option in ```dig```.
 ```
 ajread@aj-ubuntu:~$ dig givemetheflag.com @[Remote IP] txt
 
