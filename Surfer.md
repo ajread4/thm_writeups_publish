@@ -1,9 +1,13 @@
-## Surfer	
+# Surfer
+
+### Surfer
 
 Room link: https://tryhackme.com/room/surfer
 
-## Scanning 
-Just to ensure that I wasn't missing anything. I ran an aggressive NMAP scan. 
+### Scanning
+
+Just to ensure that I wasn't missing anything. I ran an aggressive NMAP scan.
+
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A [REMOTE IP]
 Starting Nmap 7.80 ( https://nmap.org ) at 2022-10-27 19:16 EDT
@@ -27,7 +31,9 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 10.39 seconds
 ```
-I ran nikto as well to see what possible web app vulnerabilities there were. 
+
+I ran nikto as well to see what possible web app vulnerabilities there were.
+
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nikto -h [REMOTE IP]
 - Nikto v2.1.5
@@ -52,7 +58,9 @@ ajread@aj-ubuntu:~/TryHackMe$ nikto -h [REMOTE IP]
 + End Time:           2022-10-27 19:28:10 (GMT-4) (695 seconds)
 ---------------------------------------------------------------------------
 ```
-As seen, there was a robots.txt entry. I investigated the entry and found and interesting chat log. 
+
+As seen, there was a robots.txt entry. I investigated the entry and found and interesting chat log.
+
 ```
 ajread@aj-ubuntu:~/TryHackMe$ curl http://[REMOTE IP]/backup/chat.txt
 
@@ -64,9 +72,10 @@ Admin: Yes, it should be serving flag from now.
 Kate: Also Don't forget to change the creds, plz stop using your username as password.
 Kate: Hello.. ?
 ```
-Therefore, I was able to log into the application with credentials ```admin:admin```. On the right hand side within Recent Activity, the application stated that the flag was located within ```/internal/admin.php```.The chat above talked about the export2pdf tool that was new as well. I needed to conduct SSRF to access the internal page. I decided to check out how the export2pdf interacts with the webpage. It appeared to submit a POST request to an internal info page. 
-```
 
+Therefore, I was able to log into the application with credentials `admin:admin`. On the right hand side within Recent Activity, the application stated that the flag was located within `/internal/admin.php`.The chat above talked about the export2pdf tool that was new as well. I needed to conduct SSRF to access the internal page. I decided to check out how the export2pdf interacts with the webpage. It appeared to submit a POST request to an internal info page.
+
+```
             <!-- Reports -->
             <div class="col-12">
               <div class="card">
@@ -84,9 +93,10 @@ Therefore, I was able to log into the application with credentials ```admin:admi
               </div>
             </div><!-- End Reports -->
 ```
-I changed the value of the webpage to be the ```/internal/admin.php``` page and resent the request by clicking the Export to PDF button. 
-```
 
+I changed the value of the webpage to be the `/internal/admin.php` page and resent the request by clicking the Export to PDF button.
+
+```
             <!-- Reports -->
             <div class="col-12">
               <div class="card">
@@ -104,4 +114,5 @@ I changed the value of the webpage to be the ```/internal/admin.php``` page and 
               </div>
             </div><!-- End Reports -->
 ```
-Finally, I found the flag! 
+
+Finally, I found the flag!
