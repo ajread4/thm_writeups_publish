@@ -1,6 +1,6 @@
 # Git Happens
 
-Room (link)[https://tryhackme.com/room/githappens]
+Room [link](https://tryhackme.com/room/githappens). 
 
 ## Scanning 
 I ran an NMAP scan to check out what was located on the machine. 
