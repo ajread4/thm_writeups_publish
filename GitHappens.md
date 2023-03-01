@@ -5,9 +5,9 @@ Room [link](https://tryhackme.com/room/githappens).
 ## Scanning 
 I ran an NMAP scan to check out what was located on the machine. 
 ```
-ajread@ajread-laptop:~/ctf/tryhackme$ nmap -A 10.10.17.100
+ajread@ajread-laptop:~/ctf/tryhackme$ nmap -A [TARGET IP]
 Starting Nmap 7.92 ( https://nmap.org ) at 2023-02-27 21:14 EST
-Nmap scan report for 10.10.17.100
+Nmap scan report for [TARGET IP]
 Host is up (0.078s latency).
 Not shown: 999 closed tcp ports (conn-refused)
 PORT   STATE SERVICE VERSION
@@ -15,7 +15,7 @@ PORT   STATE SERVICE VERSION
 |_http-title: Super Awesome Site!
 |_http-server-header: nginx/1.14.0 (Ubuntu)
 | http-git: 
-|   10.10.17.100:80/.git/
+|   [TARGET IP]:80/.git/
 |     Git repository found!
 |_    Repository description: Unnamed repository; edit this file 'description' to name the...
 Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
