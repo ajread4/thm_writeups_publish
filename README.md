@@ -1,5 +1,3 @@
-# README
-
 Writeups for various TryHackMe Rooms! 
 
 # Easy
