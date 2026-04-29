@@ -1,6 +1,18 @@
 Writeups for various TryHackMe Rooms! 
 
-# Easy
+# Defensive Rooms
+
+## Hard
+1. Honeynet Collapse Room: [Initial Access Pot](InitialAccessPot.md)
+2. Honeynet Collapse Room: [Elevating Movement](ElevatingMovement.md)
+3. Honeynet Collapse Room: [Lost in RAMSlation](LostinRAMSlation.md)
+4. Honeynet Collapse Room: [CRM Snatch](CRMSnatch.md)
+5. Honeynet Collapse Room: [Shock and Silence](ShockandSilence.md)
+6. Honeynet Collapse Room: [The Last Trial](TheLastTrial.md)
+
+# Offensive Rooms
+
+## Easy
 1. [DigDug](DigDug.md)
 2. [Flatline](Flatline.md)
 3. [Ide](Ide.md)
@@ -12,10 +24,10 @@ Writeups for various TryHackMe Rooms!
 9. [Surfer](Surfer.md)
 10. [Tech_Supp0rt](Tech_Supp0rt.md)
 
-# Medium
+## Medium
 1. [Mr.Robot](MrRobot.md)
 2. [Overpass3](Overpass3.md)
 3. [Road](Road.md)
 
-# Archived
+## Archived
 1. [GitHappens](GitHappens.md)

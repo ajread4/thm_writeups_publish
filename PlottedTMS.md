@@ -1,8 +1,8 @@
-## Plotted-TMS 
+## Plotted-TMS
 
 Room link: https://tryhackme.com/room/plottedtms
 
-## Scanning 
+## Scanning
 I ran an aggressive NMAP scan with ```-A``` option. 
 ```
 ajread@aj-ubuntu:~/TryHackMe$ nmap -A [Remote IP]
@@ -134,7 +134,7 @@ pa_shell-5.0$ wc -c /home/plot_admin/user.txt
 wc -c /home/plot_admin/user.txt
 33 /home/plot_admin/user.txt
 ```
-## Privilege Escalation 
+## Privilege Escalation
 I added my public ssh key as an authorized key on the target machine so that I was able to ssh into the target. 
 ```
 ajread@aj-ubuntu:~$ ssh plot_admin@[Remote IP]
@@ -161,5 +161,5 @@ Hope you enjoyed the journey!
 Do let me know if you have any ideas/suggestions for future rooms.
 -sa.infinity8888
 ```
-## Assistance 
+## Assistance
 Done with help from: https://wiki.thehacker.nz/docs/thm-writeups/plotted-tms-easy/
