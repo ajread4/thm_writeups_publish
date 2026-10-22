@@ -9,6 +9,7 @@ Writeups for various TryHackMe Rooms!
 4. Honeynet Collapse Room: [CRM Snatch](CRMSnatch.md)
 5. Honeynet Collapse Room: [Shock and Silence](ShockandSilence.md)
 6. Honeynet Collapse Room: [The Last Trial](TheLastTrial.md)
+7. DetectMare: [DetectMare](DetectMare.md)
 
 # Offensive Rooms
 
